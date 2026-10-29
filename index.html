@@ -13,7 +13,12 @@
 .movie-table{width:max-content;max-width:100%;border-collapse:collapse;min-width:0;text-align:left}.table-wrap{display:inline-block;max-width:100%;vertical-align:top}
 .movie-table th{background:#222337;color:#c9c2ff;font-size:11px;text-transform:uppercase;letter-spacing:.1em;padding:13px 15px;white-space:nowrap}
 .movie-table td{padding:12px 15px;border-top:1px solid var(--line);vertical-align:middle}
-.movie-table tbody tr:hover{background:#22233780}.movie-table .section-row td{background:#292744;color:#ded8ff;border-top:2px solid #514777;padding:10px 15px;letter-spacing:.06em}.section-row .table-category{margin-left:8px;font-weight:700;letter-spacing:0}
+.movie-table tbody tr:hover{background:#22233780}
+.movie-tabs{display:flex;gap:9px;flex-wrap:wrap;margin:0 0 16px}
+.movie-tab{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:12px;background:#1a1b29;color:var(--muted);padding:10px 15px;font-weight:800}
+.movie-tab span{display:inline-grid;place-items:center;min-width:24px;height:24px;padding:0 6px;border-radius:8px;background:#303147;color:var(--text);font-size:11px}
+.movie-tab.active{background:#2d2948;color:#e0d9ff;border-color:#7669ad}
+.movie-tab.active span{background:#514777;color:#fff}.movie-table .section-row td{background:#292744;color:#ded8ff;border-top:2px solid #514777;padding:10px 15px;letter-spacing:.06em}.section-row .table-category{margin-left:8px;font-weight:700;letter-spacing:0}
 .table-name{display:flex;align-items:center;gap:11px;font-weight:750}
 .table-thumb{width:50px;height:70px;border-radius:5px;object-fit:cover;background:#292a3d;flex-shrink:0}
 .table-thumb-placeholder{width:50px;height:70px;border-radius:5px;background:#292a3d;display:grid;place-items:center;flex-shrink:0}
@@ -26,7 +31,7 @@
 <body>
 <div class="wrap">
 <header class="top"><div class="brand"><div class="logo">▶</div><div><div class="eyebrow">YOUR PERSONAL CINEMA</div><h1>CHAYAN ENTERTAINMENT</h1></div></div><div class="topnote">A little place for every great film.</div></header>
-<section class="hero"><div><h2>Your movie universe.</h2><p>Collect the films you love, one poster at a time.</p></div><div class="counter-group"><div class="stat"><small>TOTAL MOVIES</small><strong id="countMovies">0</strong></div><div class="stat"><small>BENGALI</small><strong id="countBengali">0</strong></div><div class="stat"><small>HINDI</small><strong id="countHindi">0</strong></div><div class="stat"><small>ENGLISH</small><strong id="countEnglish">0</strong></div></div></section>
+<section class="hero"><div><h2>Your movie universe.</h2><p>Collect the films you love, one poster at a time.</p></div><div class="counter-group"><div class="stat"><small>BENGALI MOVIES</small><strong id="countBengali">0</strong></div><div class="stat"><small>HINDI MOVIES</small><strong id="countHindi">0</strong></div><div class="stat"><small>ENGLISH MOVIES</small><strong id="countEnglish">0</strong></div></div></section>
 <main class="columns">
 <aside class="panel form-panel"><div class="panel-title"><h3 id="formTitle">ADD TO YOUR LIBRARY</h3><span class="pill" id="formPill">NEW MOVIE</span></div>
 <form id="movieForm">
@@ -39,7 +44,7 @@
 </form>
 </aside>
 <section class="library"><div class="toolbar"><div class="searchbox"><span>⌕</span><input class="field" id="search" type="search" placeholder="Search your movie library…"></div><select class="field sort" id="sort" aria-label="Sort movies"><option value="title">Movie name A–Z</option><option value="oldest">Year: oldest first</option><option value="newest">Recently added</option></select></div>
-<p class="results" id="results">0 movies shown</p><div class="table-wrap"><table class="movie-table" aria-live="polite"><thead><tr><th>Sl. No.</th><th>Poster</th><th>Name</th><th>Year</th><th>Actions</th></tr></thead><tbody id="movieGrid"></tbody></table></div>
+<div class="movie-tabs" role="tablist" aria-label="Movie language sections"><button class="movie-tab active" type="button" role="tab" aria-selected="true" data-language="Bengali">Bengali <span id="tabCountBengali">0</span></button><button class="movie-tab" type="button" role="tab" aria-selected="false" data-language="Hindi">Hindi <span id="tabCountHindi">0</span></button><button class="movie-tab" type="button" role="tab" aria-selected="false" data-language="English">English <span id="tabCountEnglish">0</span></button></div><p class="results" id="results">0 movies shown</p><div class="table-wrap"><table class="movie-table" aria-live="polite"><thead><tr><th>Sl. No.</th><th>Poster</th><th>Name</th><th>Year</th><th>Actions</th></tr></thead><tbody id="movieGrid"></tbody></table></div>
 </section></main>
 <footer class="footer">CHAYAN ENTERTAINMENT · YOUR LIBRARY, YOUR WAY</footer>
 </div>
@@ -51,7 +56,7 @@
 const KEY='chayan-entertainment-web-movies-v1';
 const $=id=>document.getElementById(id);
 const form=$('movieForm'), name=$('movieName'), year=$('movieYear'), language=$('movieLanguage'), poster=$('posterUrl');
-let movies=[], editingId=null, deleteId=null, toastTimer;
+let movies=[], editingId=null, deleteId=null, toastTimer, activeLanguage='Bengali';
 const escapeHtml=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function openDatabase(){return new Promise((resolve,reject)=>{if(!('indexedDB' in window)){reject(new Error('IndexedDB unavailable'));return}const req=indexedDB.open('ChayanEntertainmentDB',1);req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains('library'))req.result.createObjectStore('library')};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||new Error('Database open failed'))})}
 async function loadMovies(){try{const db=await openDatabase();const data=await new Promise((resolve,reject)=>{const tx=db.transaction('library','readonly');const req=tx.objectStore('library').get('movies');req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)});db.close();if(Array.isArray(data)){movies=data.filter(m=>m&&typeof m.name==='string'&&typeof m.id==='string');return} }catch(e){console.warn('IndexedDB load fallback:',e)}
@@ -100,22 +105,16 @@ function render(){
  const q=$('search').value.trim().toLowerCase(),sort=$('sort').value;
  const languages=['Bengali','Hindi','English'];
  const all=movies.map(m=>({...m,language:languages.includes(m.language)?m.language:'Bengali'}));
- const shown=all.filter(m=>m.name.toLowerCase().includes(q)||String(m.year).includes(q)||m.language.toLowerCase().includes(q));
- $('countMovies').textContent=all.length.toLocaleString();
- for(const lang of languages){$('count'+lang).textContent=all.filter(m=>m.language===lang).length.toLocaleString()}
+ const shown=all.filter(m=>m.language===activeLanguage&&(m.name.toLowerCase().includes(q)||String(m.year).includes(q)));
+ for(const lang of languages){const count=all.filter(m=>m.language===lang).length.toLocaleString();$('count'+lang).textContent=count;$('tabCount'+lang).textContent=count}
+ document.querySelectorAll('.movie-tab').forEach(tab=>{const active=tab.dataset.language===activeLanguage;tab.classList.toggle('active',active);tab.setAttribute('aria-selected',String(active))});
  const sortRows=arr=>arr.sort((a,b)=>sort==='oldest'?a.year-b.year:sort==='newest'?new Date(b.createdAt||0)-new Date(a.createdAt||0):a.name.localeCompare(b.name,undefined,{sensitivity:'base'}));
- $('results').textContent=shown.length+' movie'+(shown.length===1?'':'s')+' shown';
- let serial=0,rows='';
- for(const lang of languages){
-   const group=sortRows(shown.filter(m=>m.language===lang));
-   if(!group.length)continue;
-   rows+='<tr class="section-row"><td colspan="5"><strong>'+lang.toUpperCase()+' MOVIES</strong> <span class="table-category">'+group.length+' movie'+(group.length===1?'':'s')+'</span></td></tr>';
-   rows+=group.map(m=>{serial++;const posterCell=m.posterUrl?'<img class="table-thumb" loading="lazy" src="'+escapeHtml(m.posterUrl)+'" alt="" onerror="this.remove()">':'<span class="table-thumb-placeholder">🎬</span>';return '<tr><td>'+serial+'</td><td>'+posterCell+'</td><td><div class="table-name"><span>'+escapeHtml(m.name)+'</span></div></td><td>'+escapeHtml(m.year)+'</td><td><div class="table-actions"><button class="iconbtn" data-action="edit" data-id="'+escapeHtml(m.id)+'" aria-label="Edit '+escapeHtml(m.name)+'" title="Edit">✎</button><button class="iconbtn" data-action="delete" data-id="'+escapeHtml(m.id)+'" aria-label="Delete '+escapeHtml(m.name)+'" title="Delete">×</button></div></td></tr>'}).join('');
- }
- $('movieGrid').innerHTML=rows||'<tr><td colspan="5"><div class="empty"><b>'+(movies.length?'No matching movies':'Your library is empty')+'</b>'+(movies.length?'Try another search.':'Add a movie using the form.')+'</div></td></tr>';
+ $('results').textContent=shown.length+' '+activeLanguage.toLowerCase()+' movie'+(shown.length===1?'':'s')+' shown';
+ const rows=sortRows(shown).map((m,i)=>{const posterCell=m.posterUrl?'<img class="table-thumb" loading="lazy" src="'+escapeHtml(m.posterUrl)+'" alt="" onerror="this.remove()">':'<span class="table-thumb-placeholder">🎬</span>';return '<tr><td>'+(i+1)+'</td><td>'+posterCell+'</td><td><div class="table-name"><span>'+escapeHtml(m.name)+'</span></div></td><td>'+escapeHtml(m.year)+'</td><td><div class="table-actions"><button class="iconbtn" data-action="edit" data-id="'+escapeHtml(m.id)+'" aria-label="Edit '+escapeHtml(m.name)+'" title="Edit">✎</button><button class="iconbtn" data-action="delete" data-id="'+escapeHtml(m.id)+'" aria-label="Delete '+escapeHtml(m.name)+'" title="Delete">×</button></div></td></tr>'}).join('');
+ $('movieGrid').innerHTML=rows||'<tr><td colspan="5"><div class="empty"><b>'+(all.some(m=>m.language===activeLanguage)?'No matching movies':'No '+activeLanguage.toLowerCase()+' movies yet')+'</b>'+(q?'Try another search.':'Add a movie using the form and select this section.')+'</div></td></tr>';
 }
 $('movieGrid').addEventListener('click',e=>{const b=e.target.closest('button[data-action]');if(!b)return;b.dataset.action==='edit'?editMovie(b.dataset.id):openDelete(b.dataset.id)});
-$('search').addEventListener('input',render);$('sort').addEventListener('change',render);
+document.querySelectorAll('.movie-tab').forEach(tab=>tab.addEventListener('click',()=>{activeLanguage=tab.dataset.language;render()}));$('search').addEventListener('input',render);$('sort').addEventListener('change',render);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('modal').classList.remove('open');deleteId=null}});
 loadMovies().then(()=>{render();drawPreview()}).catch(()=>{render();drawPreview();notify('Library loaded with limited storage support.')});
 })();
