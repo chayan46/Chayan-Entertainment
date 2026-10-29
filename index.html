@@ -28,30 +28,12 @@
 @media(max-width:680px){.movie-table th,.movie-table td{padding:10px 11px}}
 
 
-.login-gate{position:fixed;inset:0;z-index:2000;display:grid;place-items:center;padding:22px;background:radial-gradient(ellipse at 85% -10%,#34305f 0,transparent 45%),#11111b}
-.login-card{width:min(390px,100%);padding:30px;border:1px solid #393b55;border-radius:22px;background:#191a28;box-shadow:0 24px 80px #0008;text-align:center}
-.login-icon{width:58px;height:58px;margin:0 auto 18px;border-radius:18px;display:grid;place-items:center;background:linear-gradient(135deg,#a99cff,#745de0);font-size:27px}
-.login-card h2{margin:0 0 7px;font-size:25px}.login-card p{margin:0 0 22px;color:#a4a7bf;font-size:13px}
-.login-card label{text-align:left}.login-card .field{text-align:center;letter-spacing:.35em;font-size:20px}.login-error{min-height:20px;color:#ff8d9b;font-size:12px;margin-top:9px}
-#loginGate[hidden]{display:none!important}
-#appContent[hidden]{display:none!important}
 
 </style>
 </head>
 <body>
-<section class="login-gate" id="loginGate" aria-label="Password protected access">
-  <form class="login-card" id="loginForm">
-    <div class="login-icon">▶</div>
-    <div class="eyebrow">PRIVATE LIBRARY</div>
-    <h2>CHAYAN ENTERTAINMENT</h2>
-    <p>Enter your password to access your personal entertainment library.</p>
-    <label for="accessPassword">Password</label>
-    <input class="field" id="accessPassword" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="current-password" placeholder="••••••" required>
-    <button class="btn primary" type="submit" style="width:100%;margin-top:16px">Unlock library</button>
-    <div class="login-error" id="loginError" role="alert"></div>
-  </form>
-</section>
-<div id="appContent" hidden>
+<div id="appContent">
+
 <div class="wrap">
 <header class="top"><div class="brand"><div class="logo">▶</div><div><div class="eyebrow">YOUR PERSONAL CINEMA</div><h1>CHAYAN ENTERTAINMENT</h1></div></div><div class="topnote">A little place for every great film.</div></header>
 <nav class="universe-tabs" role="tablist" aria-label="Entertainment library"><button class="universe-tab active" type="button" role="tab" aria-selected="true" data-universe="movies">🎬 Movie Universe</button><button class="universe-tab" type="button" role="tab" aria-selected="false" data-universe="webseries">📺 Web Series Universe</button></nav>
@@ -76,26 +58,7 @@
 <div id="toast" class="toast" role="status"></div>
 <div class="modal-backdrop" id="modal"><div class="modal"><h3>Remove this movie?</h3><p id="deleteCopy">This movie will be removed from this browser's library.</p><div class="actions"><button class="btn secondary" id="deleteCancel">Cancel</button><button class="btn danger" id="deleteConfirm">Delete movie</button></div></div></div>
 <div class="image-lightbox" id="imageLightbox" aria-label="Poster preview" role="dialog" aria-modal="true" aria-hidden="true"><img id="lightboxImage" alt="Enlarged movie poster"></div>
-<script>
-(() => {
-  const gate=document.getElementById('loginGate');
-  const app=document.getElementById('appContent');
-  const form=document.getElementById('loginForm');
-  const field=document.getElementById('accessPassword');
-  const error=document.getElementById('loginError');
-  if(sessionStorage.getItem('chayan-entertainment-unlocked')==='yes'){gate.hidden=true;app.hidden=false;}
-  form.addEventListener('submit',event=>{
-    event.preventDefault();
-    if(field.value==='000000'){
-      sessionStorage.setItem('chayan-entertainment-unlocked','yes');
-      gate.hidden=true;app.hidden=false;error.textContent='';
-    }else{
-      error.textContent='Incorrect password. Please try again.';
-      field.value='';field.focus();
-    }
-  });
-})();
-</script>
+
 <script>
 (() => {
 'use strict';
