@@ -20,8 +20,8 @@
 .movie-tab.active{background:#2d2948;color:#e0d9ff;border-color:#7669ad}
 .movie-tab.active span{background:#514777;color:#fff}.movie-table .section-row td{background:#292744;color:#ded8ff;border-top:2px solid #514777;padding:10px 15px;letter-spacing:.06em}.section-row .table-category{margin-left:8px;font-weight:700;letter-spacing:0}
 .table-name{display:flex;align-items:center;gap:11px;font-weight:750}
-.table-thumb{width:5cm;height:6cm;min-width:5cm;min-height:6cm;border-radius:5px;object-fit:cover;background:#292a3d;flex-shrink:0;display:block;cursor:zoom-in}
-.table-thumb-placeholder{width:5cm;height:6cm;min-width:5cm;min-height:6cm;border-radius:5px;background:#292a3d;display:grid;place-items:center;flex-shrink:0}
+.table-thumb{width:3cm;height:4cm;min-width:3cm;min-height:4cm;border-radius:5px;object-fit:cover;background:#292a3d;flex-shrink:0;display:block;cursor:zoom-in}
+.table-thumb-placeholder{width:3cm;height:4cm;min-width:3cm;min-height:4cm;border-radius:5px;background:#292a3d;display:grid;place-items:center;flex-shrink:0}
 .table-category{font-size:10px;color:#bdb4ff;background:#302b4a;border-radius:6px;padding:5px 8px;white-space:nowrap}
 .table-actions{display:flex;gap:5px}
 @media(max-width:680px){.movie-table th,.movie-table td{padding:10px 11px}}
@@ -31,12 +31,12 @@
 <body>
 <div class="wrap">
 <header class="top"><div class="brand"><div class="logo">▶</div><div><div class="eyebrow">YOUR PERSONAL CINEMA</div><h1>CHAYAN ENTERTAINMENT</h1></div></div><div class="topnote">A little place for every great film.</div></header>
-<section class="hero"><div><h2>Your movie universe.</h2><p>Collect the films you love, one poster at a time.</p></div><div class="counter-group"><div class="stat"><small>BENGALI MOVIES</small><strong id="countBengali">0</strong></div><div class="stat"><small>HINDI MOVIES</small><strong id="countHindi">0</strong></div><div class="stat"><small>ENGLISH MOVIES</small><strong id="countEnglish">0</strong></div></div></section>
+<section class="hero"><div><h2>Your movie universe.</h2><p>Collect the films you love, one poster at a time.</p></div><div class="counter-group"><div class="stat"><small>Bengali Movies</small><strong id="countBengali">0</strong></div><div class="stat"><small>Hindi Movies</small><strong id="countHindi">0</strong></div><div class="stat"><small>English Movies</small><strong id="countEnglish">0</strong></div></div></section>
 <main class="columns">
 <aside class="panel form-panel"><div class="panel-title"><h3 id="formTitle">ADD TO YOUR LIBRARY</h3><span class="pill" id="formPill">NEW MOVIE</span></div>
 <form id="movieForm">
 <label for="movieName">Movie name *</label><input class="field" id="movieName" maxlength="120" placeholder="e.g. Pather Panchali" required>
-<label for="movieYear">Release year *</label><input class="field" id="movieYear" type="number" min="1888" max="2100" placeholder="e.g. 1955" required><label for="movieLanguage">Section / language *</label><select class="field" id="movieLanguage" required><option value="Bengali">Bengali</option><option value="Hindi">Hindi</option><option value="English">English</option></select>
+<label for="movieYear">Release year *</label><input class="field" id="movieYear" type="number" min="1888" max="2100" placeholder="e.g. 1955" required><label for="movieLanguage">Section / language *</label><select class="field" id="movieLanguage" required><option value="Bengali">Bengali Movies</option><option value="Hindi">Hindi Movies</option><option value="English">English Movies</option></select>
 <label for="posterUrl">Poster image</label><input class="field" id="posterUrl" type="text" placeholder="Paste image with Ctrl+V or enter image URL"><input id="posterFile" type="file" accept="image/*" hidden><button class="btn secondary" type="button" id="choosePoster" style="width:100%;margin-top:8px">Choose image file…</button>
 <p class="help">Choose an image file, paste an image into this field with Ctrl+V, or enter a direct image URL. Library is saved in browser storage.</p>
 <div class="poster-preview" id="preview"><span>🎬</span><span>Poster preview will appear here</span></div>
@@ -44,7 +44,7 @@
 </form>
 </aside>
 <section class="library"><div class="toolbar"><div class="searchbox"><span>⌕</span><input class="field" id="search" type="search" placeholder="Search your movie library…"></div><select class="field sort" id="sort" aria-label="Sort movies"><option value="title">Movie name A–Z</option><option value="oldest">Year: oldest first</option><option value="newest">Recently added</option></select></div>
-<div class="movie-tabs" role="tablist" aria-label="Movie language sections"><button class="movie-tab active" type="button" role="tab" aria-selected="true" data-language="Bengali">Bengali <span id="tabCountBengali">0</span></button><button class="movie-tab" type="button" role="tab" aria-selected="false" data-language="Hindi">Hindi <span id="tabCountHindi">0</span></button><button class="movie-tab" type="button" role="tab" aria-selected="false" data-language="English">English <span id="tabCountEnglish">0</span></button></div><p class="results" id="results">0 movies shown</p><div class="table-wrap"><table class="movie-table" aria-live="polite"><thead><tr><th>Sl. No.</th><th>Poster</th><th>Name</th><th>Year</th><th>Actions</th></tr></thead><tbody id="movieGrid"></tbody></table></div>
+<div class="movie-tabs" role="tablist" aria-label="Movie language sections"><button class="movie-tab active" type="button" role="tab" aria-selected="true" data-language="Bengali">Bengali Movies <span id="tabCountBengali">0</span></button><button class="movie-tab" type="button" role="tab" aria-selected="false" data-language="Hindi">Hindi Movies <span id="tabCountHindi">0</span></button><button class="movie-tab" type="button" role="tab" aria-selected="false" data-language="English">English Movies <span id="tabCountEnglish">0</span></button></div><p class="results" id="results">0 movies shown</p><div class="table-wrap"><table class="movie-table" aria-live="polite"><thead><tr><th>Sl. No.</th><th>Poster</th><th>Name</th><th>Year</th><th>Actions</th></tr></thead><tbody id="movieGrid"></tbody></table></div>
 </section></main>
 <footer class="footer">CHAYAN ENTERTAINMENT · YOUR LIBRARY, YOUR WAY</footer>
 </div>
