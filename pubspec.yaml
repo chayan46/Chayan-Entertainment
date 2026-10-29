@@ -1,7 +1,7 @@
 name: chayan_entertainment
-description: A private personal productivity and document workspace for desktop and Android.
+description: A personal movie poster dashboard for Windows desktop.
 publish_to: "none"
-version: 0.1.0+1
+version: 1.0.0+1
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
@@ -9,7 +9,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.8
+  file_picker: ^8.1.2
+  path_provider: ^2.1.4
+  shared_preferences: ^2.3.2
 
 dev_dependencies:
   flutter_test:
