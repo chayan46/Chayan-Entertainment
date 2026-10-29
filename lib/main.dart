@@ -123,20 +123,21 @@ class _MovieDashboardState extends State<MovieDashboard> {
       0, (maxCount, list) => list.length > maxCount ? list.length : maxCount,
     );
     const letterWidth = 92.0;
-    const movieWidth = 210.0;
+    const movieWidth = 220.0;
+
     Widget headerCell(String text, {double width = movieWidth}) => Container(
       width: width, height: 48, alignment: Alignment.center,
       decoration: const BoxDecoration(color: Color(0xFF25263A)),
       child: Text(text, textAlign: TextAlign.center,
         style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFFE5E2FF))),
     );
-    Widget posterCell(Movie? movie) {
+
+    Widget movieCell(Movie? movie) {
       if (movie == null) {
         return Container(
-          width: movieWidth, height: 148, alignment: Alignment.center,
+          width: movieWidth, height: 148,
           decoration: BoxDecoration(color: const Color(0xFF171925),
             border: Border.all(color: const Color(0xFF34364B))),
-          child: const Text('—', style: TextStyle(color: Color(0xFF686B82))),
         );
       }
       final exists = movie.poster.isNotEmpty && File(movie.poster).existsSync();
@@ -145,48 +146,42 @@ class _MovieDashboardState extends State<MovieDashboard> {
         padding: const EdgeInsets.all(9),
         decoration: BoxDecoration(color: const Color(0xFF171925),
           border: Border.all(color: const Color(0xFF34364B))),
-        child: Row(children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(7),
-            child: SizedBox(
-              width: 78, height: 126,
-              child: exists
-                ? Image.file(File(movie.poster), fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _posterPlaceholder())
-                : _posterPlaceholder(),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(movie.name, maxLines: 4, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _yearColor(movie.year).withValues(alpha: .18),
-                  borderRadius: BorderRadius.circular(7),
-                  border: Border.all(color: _yearColor(movie.year).withValues(alpha: .7)),
-                ),
-                child: Text(movie.year.toString(),
-                  style: TextStyle(color: _yearColor(movie.year), fontWeight: FontWeight.w900)),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(children: [
+              const Expanded(child: Text('MOVIE NAME',
+                style: TextStyle(fontSize: 10, color: Color(0xFF9699B2), fontWeight: FontWeight.w800))),
+              Text(movie.year.toString(), style: TextStyle(
+                color: _yearColor(movie.year), fontSize: 11, fontWeight: FontWeight.w900)),
+              const SizedBox(width: 5),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                constraints: const BoxConstraints.tightFor(width: 26, height: 26),
+                tooltip: 'Remove ${movie.name}',
+                onPressed: () => _removeMovie(movie),
+                icon: const Icon(Icons.close, size: 15),
               ),
-              const SizedBox(height: 4),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: IconButton(
-                  visualDensity: VisualDensity.compact,
-                  tooltip: 'Remove ${movie.name}',
-                  onPressed: () => _removeMovie(movie),
-                  icon: const Icon(Icons.delete_outline, size: 18),
-                ),
-              ),
-            ],
-          )),
-        ]),
+            ]),
+            Text(movie.name, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 5),
+            Expanded(child: Row(children: [
+              if (exists)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(5),
+                  child: Image.file(File(movie.poster), width: 64, fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _posterPlaceholder()),
+                )
+              else
+                SizedBox(width: 64, child: _posterPlaceholder()),
+              const SizedBox(width: 8),
+              const Expanded(child: Text('MOVIE POSTER',
+                style: TextStyle(fontSize: 10, color: Color(0xFF9699B2), fontWeight: FontWeight.w800))),
+            ])),
+          ],
+        ),
       );
     }
 
@@ -232,7 +227,7 @@ class _MovieDashboardState extends State<MovieDashboard> {
                       fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFFC6BEFF))),
                   ),
                   for (var i = 0; i < maxMovies; i++)
-                    posterCell(i < grouped[letter]!.length ? grouped[letter]![i] : null),
+                    movieCell(i < grouped[letter]!.length ? grouped[letter]![i] : null),
                 ]),
             ]),
           ),
