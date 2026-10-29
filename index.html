@@ -112,6 +112,7 @@ function posterMarkup(m){if(m.posterUrl)return '<img loading="lazy" src="'+escap
 function render(){
  const q=$('search').value.trim().toLowerCase(),sort=$('sort').value;
  const languages=['Bengali','Hindi','English'];
+ for(const lang of languages){const label=lang+' '+(activeUniverse==='movies'?'Movies':'Web Series');$('count'+lang).previousElementSibling.textContent=label;const tab=document.querySelector('.movie-tab[data-language="'+lang+'"]');if(tab&&tab.firstChild)tab.firstChild.textContent=label+' ';}
  const all=movies.map(m=>({...m,language:languages.includes(m.language)?m.language:'Bengali'}));
  const shown=all.filter(m=>m.language===activeLanguage&&(m.name.toLowerCase().includes(q)||String(m.year).includes(q)));
  for(const lang of languages){const count=all.filter(m=>m.language===lang).length.toLocaleString();$('count'+lang).textContent=count;$('tabCount'+lang).textContent=count}
