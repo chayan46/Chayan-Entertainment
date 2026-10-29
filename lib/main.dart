@@ -120,55 +120,58 @@ class _MovieDashboardState extends State<MovieDashboard> {
       });
     }
 
-    const tableWidth = 760.0;
-    const letterWidth = 100.0;
-    const detailsWidth = tableWidth - letterWidth;
-
-    Widget headerCell(String label, double width) => Container(
-      width: width, height: 48, alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: const Color(0xFF25263A),
-        border: Border.all(color: const Color(0xFF34364B)),
-      ),
-      child: Text(label, style: const TextStyle(
-        fontWeight: FontWeight.w900, color: Color(0xFFE5E2FF))),
+    final maxMovies = grouped.values.fold<int>(
+      1, (count, list) => list.length > count ? list.length : count,
     );
+    const letterWidth = 110.0;
+    const movieColumnWidth = 290.0;
 
-    Widget movieEntry(Movie movie) {
-      final hasPoster = movie.poster.isNotEmpty && File(movie.poster).existsSync();
+    Widget cellBorder({required Widget child, required double width, required double height, Color? color}) {
       return Container(
-        height: 124,
-        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-        padding: const EdgeInsets.all(9),
+        width: width,
+        height: height,
+        alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: const Color(0xFF202231),
-          borderRadius: BorderRadius.circular(9),
-          border: Border.all(color: const Color(0xFF383A51)),
+          color: color ?? const Color(0xFF171925),
+          border: Border.all(color: const Color(0xFF34364B), width: 0.8),
         ),
-        child: Row(children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: SizedBox(
-              width: 74, height: 104,
-              child: hasPoster
-                ? Image.file(File(movie.poster), fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _posterPlaceholder())
-                : _posterPlaceholder(),
+        child: child,
+      );
+    }
+
+    Widget movieCell(Movie? movie) {
+      if (movie == null) {
+        return cellBorder(
+          width: movieColumnWidth, height: 122,
+          child: const SizedBox.expand(),
+        );
+      }
+      final hasPoster = movie.poster.isNotEmpty && File(movie.poster).existsSync();
+      return cellBorder(
+        width: movieColumnWidth, height: 122,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(5),
+              child: SizedBox(
+                width: 68, height: 104,
+                child: hasPoster
+                  ? Image.file(File(movie.poster), fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _posterPlaceholder())
+                  : _posterPlaceholder(),
+              ),
             ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(movie.name, maxLines: 2, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 8),
-              Row(children: [
-                const Text('YEAR  ', style: TextStyle(
-                  color: Color(0xFF9699B2), fontSize: 11, fontWeight: FontWeight.w800)),
+            const SizedBox(width: 12),
+            Expanded(child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(movie.name, maxLines: 2, overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 9),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
                     color: _yearColor(movie.year).withValues(alpha: .18),
                     borderRadius: BorderRadius.circular(7),
@@ -177,15 +180,16 @@ class _MovieDashboardState extends State<MovieDashboard> {
                   child: Text(movie.year.toString(),
                     style: TextStyle(color: _yearColor(movie.year), fontWeight: FontWeight.w900)),
                 ),
-              ]),
-            ],
-          )),
-          IconButton(
-            tooltip: 'Remove ${movie.name}',
-            onPressed: () => _removeMovie(movie),
-            icon: const Icon(Icons.delete_outline_rounded),
-          ),
-        ]),
+              ],
+            )),
+            IconButton(
+              tooltip: 'Remove ${movie.name}',
+              visualDensity: VisualDensity.compact,
+              onPressed: () => _removeMovie(movie),
+              icon: const Icon(Icons.close_rounded, size: 18),
+            ),
+          ]),
+        ),
       );
     }
 
@@ -210,52 +214,35 @@ class _MovieDashboardState extends State<MovieDashboard> {
         ),
         const Divider(height: 1),
         Expanded(child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: SizedBox(
-            width: tableWidth,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
             child: Column(children: [
               Row(children: [
-                headerCell('LETTER', letterWidth),
-                headerCell('MOVIE NAME  •  YEAR  •  POSTER', detailsWidth),
+                cellBorder(
+                  width: letterWidth, height: 54,
+                  color: const Color(0xFF25263A),
+                  child: const Text('LETTER', style: TextStyle(
+                    fontWeight: FontWeight.w900, color: Color(0xFFE5E2FF))),
+                ),
+                for (var i = 0; i < maxMovies; i++)
+                  cellBorder(
+                    width: movieColumnWidth, height: 54,
+                    color: const Color(0xFF25263A),
+                    child: const Text('MOVIE YEAR', textAlign: TextAlign.center,
+                      style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFFE5E2FF))),
+                  ),
               ]),
-              Expanded(child: ListView.builder(
-                itemCount: letters.length,
-                itemBuilder: (context, index) {
-                  final letter = letters[index];
-                  final list = grouped[letter]!;
-                  final rowHeight = list.isEmpty ? 82.0 : list.length * 134.0 + 4.0;
-                  return SizedBox(
-                    height: rowHeight,
-                    child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                      Container(
-                        width: letterWidth,
-                        alignment: Alignment.topCenter,
-                        padding: const EdgeInsets.only(top: 18),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF25263A),
-                          border: Border.all(color: const Color(0xFF34364B)),
-                        ),
-                        child: Text(letter, style: const TextStyle(
-                          fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFFC6BEFF))),
-                      ),
-                      Container(
-                        width: detailsWidth,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF171925),
-                          border: Border.all(color: const Color(0xFF34364B)),
-                        ),
-                        child: list.isEmpty
-                          ? const Center(child: Text('',
-                              style: TextStyle(color: Color(0xFF686B82))))
-                          : Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [for (final movie in list) movieEntry(movie)],
-                            ),
-                      ),
-                    ]),
-                  );
-                },
-              )),
+              for (final letter in letters)
+                Row(children: [
+                  cellBorder(
+                    width: letterWidth, height: 122,
+                    color: const Color(0xFF25263A),
+                    child: Text(letter, style: const TextStyle(
+                      fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFFC6BEFF))),
+                  ),
+                  for (var i = 0; i < maxMovies; i++)
+                    movieCell(i < grouped[letter]!.length ? grouped[letter]![i] : null),
+                ]),
             ]),
           ),
         )),
