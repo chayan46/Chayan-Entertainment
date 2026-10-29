@@ -33,8 +33,8 @@
 <label for="movieName">Movie name *</label><input class="field" id="movieName" maxlength="120" placeholder="e.g. Pather Panchali" required>
 <label for="movieYear">Release year *</label><input class="field" id="movieYear" type="number" min="1888" max="2100" placeholder="e.g. 1955" required>
 <label for="movieCategory">Category</label><select class="field" id="movieCategory"><option>Bengali Movie</option><option>Hindi Movie</option><option>English Movie</option></select>
-<label for="posterUrl">Poster image URL</label><input class="field" id="posterUrl" type="url" placeholder="https://… (optional)">
-<p class="help">Use a direct image URL ending in an image format, where possible.</p>
+<label for="posterUrl">Poster image</label><input class="field" id="posterUrl" type="text" placeholder="Paste image with Ctrl+V or enter image URL">
+<p class="help">Copy an image, click this field, then press Ctrl+V. You can also paste an image URL. Pasted images are resized for browser storage.</p>
 <div class="poster-preview" id="preview"><span>🎬</span><span>Poster preview will appear here</span></div>
 <div class="actions"><button class="btn primary" type="submit" id="saveBtn">＋ Add movie</button><button class="btn secondary" type="button" id="cancelBtn" hidden>Cancel</button></div>
 </form>
@@ -58,13 +58,30 @@ try{const saved=JSON.parse(localStorage.getItem(KEY)||'[]');if(Array.isArray(sav
 const escapeHtml=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function save(){try{localStorage.setItem(KEY,JSON.stringify(movies));return true}catch(e){notify('Browser storage is full. Remove some records or use smaller data.');return false}}
 function notify(msg){$('toast').textContent=msg;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),2700)}
-function safeUrl(value){try{const u=new URL(value);return ['http:','https:'].includes(u.protocol)?u.href:''}catch(_){return ''}}
+function safeUrl(value){if(/^data:image\/(png|jpeg|webp);base64,/i.test(value))return value;try{const u=new URL(value);return ['http:','https:'].includes(u.protocol)?u.href:''}catch(_){return ''}}
 function drawPreview(){const u=safeUrl(poster.value.trim());$('preview').innerHTML=u?'<img src="'+escapeHtml(u)+'" alt="Poster preview" onerror="this.remove();this.parentElement.innerHTML=\'<span>🎬</span><span>Image could not be loaded</span>\'"><span>Poster preview</span>':'<span>🎬</span><span>Poster preview will appear here</span>'}
 poster.addEventListener('input',drawPreview);
 poster.addEventListener('change',drawPreview);
+async function compressClipboardImage(blob){
+ const bitmap=await createImageBitmap(blob);
+ const maxWidth=700,maxHeight=900,scale=Math.min(1,maxWidth/bitmap.width,maxHeight/bitmap.height);
+ const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));
+ const ctx=canvas.getContext('2d');ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close?.();
+ return canvas.toDataURL('image/jpeg',0.78);
+}
+document.addEventListener('paste',async e=>{
+ const items=Array.from(e.clipboardData?.items||[]);
+ const imageItem=items.find(item=>item.type.startsWith('image/'));
+ if(!imageItem)return;
+ const blob=imageItem.getAsFile();if(!blob)return;
+ e.preventDefault();
+ try{poster.value=await compressClipboardImage(blob);drawPreview();notify('Image pasted. Save the movie to keep this poster.')}
+ catch(_){notify('Could not read that clipboard image. Try copying it again.')}
+});
+
 function resetForm(){form.reset();year.value='';editingId=null;$('formTitle').textContent='ADD TO YOUR LIBRARY';$('formPill').textContent='NEW MOVIE';$('saveBtn').textContent='＋ Add movie';$('cancelBtn').hidden=true;drawPreview()}
 $('cancelBtn').addEventListener('click',resetForm);
-form.addEventListener('submit',e=>{e.preventDefault();const title=name.value.trim(),y=Number(year.value),url=safeUrl(poster.value.trim());if(!title){name.focus();return}if(!Number.isInteger(y)||y<1888||y>2100){year.focus();notify('Enter a valid release year between 1888 and 2100.');return}if(poster.value.trim()&&!url){poster.focus();notify('Poster URL must start with http:// or https://.');return}
+form.addEventListener('submit',e=>{e.preventDefault();const title=name.value.trim(),y=Number(year.value),url=safeUrl(poster.value.trim());if(!title){name.focus();return}if(!Number.isInteger(y)||y<1888||y>2100){year.focus();notify('Enter a valid release year between 1888 and 2100.');return}if(poster.value.trim()&&!url){poster.focus();notify('Enter an http(s) image URL or paste an image directly.');return}
 const now=new Date().toISOString();if(editingId){const i=movies.findIndex(m=>m.id===editingId);if(i<0){notify('Movie not found.');resetForm();return}movies[i]={...movies[i],name:title,year:y,category:category.value,posterUrl:url,updatedAt:now}}else{movies.unshift({id:crypto.randomUUID?crypto.randomUUID():String(Date.now())+'-'+Math.random().toString(36).slice(2),name:title,year:y,category:category.value,posterUrl:url,createdAt:now,updatedAt:now})}
 if(!save())return;render();resetForm();notify(editingId?'Movie updated.':'Movie added to your library.')});
 function editMovie(id){const m=movies.find(x=>x.id===id);if(!m)return;editingId=id;name.value=m.name;year.value=m.year;category.value=['Bengali Movie','Hindi Movie','English Movie'].includes(m.category)?m.category:'Bengali Movie';poster.value=m.posterUrl||'';$('formTitle').textContent='EDIT MOVIE';$('formPill').textContent='EDITING';$('saveBtn').textContent='✓ Save changes';$('cancelBtn').hidden=false;drawPreview();document.querySelector('.form-panel').scrollIntoView({behavior:'smooth',block:'start'});name.focus()}
