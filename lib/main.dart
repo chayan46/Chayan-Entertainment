@@ -180,6 +180,21 @@ class _MovieDashboardState extends State<MovieDashboard> {
                             : SizedBox(
                                 width: 170,
                                 child: Row(children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: SizedBox(
+                                      width: 36,
+                                      height: 48,
+                                      child: movie.poster.isNotEmpty && File(movie.poster).existsSync()
+                                        ? Image.file(
+                                            File(movie.poster),
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) => _posterPlaceholder(),
+                                          )
+                                        : _posterPlaceholder(),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 9),
                                   Expanded(child: Text(movie.name, maxLines: 2, overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(fontWeight: FontWeight.w700))),
                                   const SizedBox(width: 8),
@@ -210,6 +225,12 @@ class _MovieDashboardState extends State<MovieDashboard> {
       ]),
     );
   }
+
+  Widget _posterPlaceholder() => Container(
+    color: const Color(0xFF303149),
+    alignment: Alignment.center,
+    child: const Icon(Icons.movie_outlined, size: 20, color: Color(0xFFB4A9FF)),
+  );
 
   Color _yearColor(int year) {
     const colors = [
