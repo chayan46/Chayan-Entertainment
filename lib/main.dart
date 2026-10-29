@@ -142,20 +142,20 @@ class _MovieDashboardState extends State<MovieDashboard> {
     Widget movieCell(Movie? movie) {
       if (movie == null) {
         return cellBorder(
-          width: movieColumnWidth, height: 189,
+          width: movieColumnWidth, height: 113,
           child: const SizedBox.expand(),
         );
       }
       final hasPoster = movie.poster.isNotEmpty && File(movie.poster).existsSync();
       return cellBorder(
-        width: movieColumnWidth, height: 122,
+        width: movieColumnWidth, height: 113,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(5),
               child: SizedBox(
-                width: 78, height: 150,
+                width: 58, height: 91,
                 child: hasPoster
                   ? Image.file(File(movie.poster), fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => _posterPlaceholder())
@@ -228,14 +228,14 @@ class _MovieDashboardState extends State<MovieDashboard> {
                   cellBorder(
                     width: movieColumnWidth, height: 54,
                     color: const Color(0xFF25263A),
-                    child: const Text('MOVIE YEAR', textAlign: TextAlign.center,
+                    child: const Text('MOVIE DETAILS', textAlign: TextAlign.center,
                       style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFFE5E2FF))),
                   ),
               ]),
               for (final letter in letters)
                 Row(children: [
                   cellBorder(
-                    width: letterWidth, height: 189,
+                    width: letterWidth, height: 113,
                     color: const Color(0xFF25263A),
                     child: Text(letter, style: const TextStyle(
                       fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFFC6BEFF))),
