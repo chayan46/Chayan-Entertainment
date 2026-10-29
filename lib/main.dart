@@ -103,7 +103,8 @@ class _MovieDashboardState extends State<MovieDashboard> {
 
   Future<String> _readCloudContent() async {
     final file = File('$_driveFolder${Platform.pathSeparator}library.json');
-    return await file.exists() ? file.readAsString() : '';
+    if (await file.exists()) return await file.readAsString();
+    return '';
   }
 
   List<Map<String, dynamic>> _serializedMovies({bool relativePosters = false}) {
