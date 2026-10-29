@@ -14,14 +14,14 @@
 .movie-table th{background:#222337;color:#c9c2ff;font-size:11px;text-transform:uppercase;letter-spacing:.1em;padding:13px 15px;white-space:nowrap}
 .movie-table td{padding:12px 15px;border-top:1px solid var(--line);vertical-align:middle}
 .movie-table tbody tr:hover{background:#22233780}
-.movie-tabs{display:flex;gap:9px;flex-wrap:wrap;margin:0 0 16px}
+.image-lightbox{position:fixed;inset:0;z-index:1000;background:rgba(5,6,14,.88);display:none;align-items:center;justify-content:center;padding:24px;cursor:zoom-out;backdrop-filter:blur(5px)}.image-lightbox.open{display:flex}.image-lightbox img{display:block;max-width:min(92vw,800px);max-height:90vh;object-fit:contain;border-radius:10px;box-shadow:0 20px 70px #000b;cursor:default}.movie-tabs{display:flex;gap:9px;flex-wrap:wrap;margin:0 0 16px}
 .movie-tab{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:12px;background:#1a1b29;color:var(--muted);padding:10px 15px;font-weight:800}
 .movie-tab span{display:inline-grid;place-items:center;min-width:24px;height:24px;padding:0 6px;border-radius:8px;background:#303147;color:var(--text);font-size:11px}
 .movie-tab.active{background:#2d2948;color:#e0d9ff;border-color:#7669ad}
 .movie-tab.active span{background:#514777;color:#fff}.movie-table .section-row td{background:#292744;color:#ded8ff;border-top:2px solid #514777;padding:10px 15px;letter-spacing:.06em}.section-row .table-category{margin-left:8px;font-weight:700;letter-spacing:0}
 .table-name{display:flex;align-items:center;gap:11px;font-weight:750}
-.table-thumb{width:3cm;height:3cm;min-width:3cm;min-height:3cm;border-radius:5px;object-fit:cover;background:#292a3d;flex-shrink:0;display:block}
-.table-thumb-placeholder{width:3cm;height:3cm;min-width:3cm;min-height:3cm;border-radius:5px;background:#292a3d;display:grid;place-items:center;flex-shrink:0}
+.table-thumb{width:5cm;height:5cm;min-width:5cm;min-height:5cm;border-radius:5px;object-fit:cover;background:#292a3d;flex-shrink:0;display:block;cursor:zoom-in}
+.table-thumb-placeholder{width:5cm;height:5cm;min-width:5cm;min-height:5cm;border-radius:5px;background:#292a3d;display:grid;place-items:center;flex-shrink:0}
 .table-category{font-size:10px;color:#bdb4ff;background:#302b4a;border-radius:6px;padding:5px 8px;white-space:nowrap}
 .table-actions{display:flex;gap:5px}
 @media(max-width:680px){.movie-table th,.movie-table td{padding:10px 11px}}
@@ -50,6 +50,7 @@
 </div>
 <div id="toast" class="toast" role="status"></div>
 <div class="modal-backdrop" id="modal"><div class="modal"><h3>Remove this movie?</h3><p id="deleteCopy">This movie will be removed from this browser's library.</p><div class="actions"><button class="btn secondary" id="deleteCancel">Cancel</button><button class="btn danger" id="deleteConfirm">Delete movie</button></div></div></div>
+<div class="image-lightbox" id="imageLightbox" aria-label="Poster preview" role="dialog" aria-modal="true" aria-hidden="true"><img id="lightboxImage" alt="Enlarged movie poster"></div>
 <script>
 (() => {
 'use strict';
@@ -100,6 +101,11 @@ function openDelete(id){deleteId=id;const m=movies.find(x=>x.id===id);$('deleteC
 $('deleteCancel').addEventListener('click',()=>{$('modal').classList.remove('open');deleteId=null});
 $('modal').addEventListener('click',e=>{if(e.target===$('modal')){$('modal').classList.remove('open');deleteId=null}});
 $('deleteConfirm').addEventListener('click',async()=>{if(!deleteId)return;const previous=movies.slice();movies=movies.filter(m=>m.id!==deleteId);if(!await save()){movies=previous;return}if(editingId===deleteId)resetForm();$('modal').classList.remove('open');deleteId=null;render();notify('Movie removed.')});
+function showPoster(src,alt){if(!src)return;const box=$('imageLightbox');$('lightboxImage').src=src;$('lightboxImage').alt=alt||'Movie poster';box.classList.add('open');box.setAttribute('aria-hidden','false')}
+function closePoster(){const box=$('imageLightbox');box.classList.remove('open');box.setAttribute('aria-hidden','true');$('lightboxImage').removeAttribute('src')}
+$('imageLightbox').addEventListener('click',e=>{if(e.target===$('imageLightbox'))closePoster()});
+$('lightboxImage').addEventListener('click',e=>e.stopPropagation());
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closePoster()});
 function posterMarkup(m){if(m.posterUrl)return '<img loading="lazy" src="'+escapeHtml(m.posterUrl)+'" alt="'+escapeHtml(m.name)+' poster" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'grid\'"><div class="placeholder" style="display:none">🎬</div>';return '<div class="placeholder">🎬</div>'}
 function render(){
  const q=$('search').value.trim().toLowerCase(),sort=$('sort').value;
@@ -110,10 +116,10 @@ function render(){
  document.querySelectorAll('.movie-tab').forEach(tab=>{const active=tab.dataset.language===activeLanguage;tab.classList.toggle('active',active);tab.setAttribute('aria-selected',String(active))});
  const sortRows=arr=>arr.sort((a,b)=>sort==='oldest'?a.year-b.year:sort==='newest'?new Date(b.createdAt||0)-new Date(a.createdAt||0):a.name.localeCompare(b.name,undefined,{sensitivity:'base'}));
  $('results').textContent=shown.length+' '+activeLanguage.toLowerCase()+' movie'+(shown.length===1?'':'s')+' shown';
- const rows=sortRows(shown).map((m,i)=>{const posterCell=m.posterUrl?'<img class="table-thumb" loading="lazy" src="'+escapeHtml(m.posterUrl)+'" alt="" onerror="this.remove()">':'<span class="table-thumb-placeholder">🎬</span>';return '<tr><td>'+(i+1)+'</td><td>'+posterCell+'</td><td><div class="table-name"><span>'+escapeHtml(m.name)+'</span></div></td><td>'+escapeHtml(m.year)+'</td><td><div class="table-actions"><button class="iconbtn" data-action="edit" data-id="'+escapeHtml(m.id)+'" aria-label="Edit '+escapeHtml(m.name)+'" title="Edit">✎</button><button class="iconbtn" data-action="delete" data-id="'+escapeHtml(m.id)+'" aria-label="Delete '+escapeHtml(m.name)+'" title="Delete">×</button></div></td></tr>'}).join('');
+ const rows=sortRows(shown).map((m,i)=>{const posterCell=m.posterUrl?'<img class="table-thumb" loading="lazy" src="'+escapeHtml(m.posterUrl)+'" alt="'+escapeHtml(m.name)+' poster" data-poster-src="'+escapeHtml(m.posterUrl)+'" data-poster-alt="'+escapeHtml(m.name)+' poster" onerror="this.remove()">':'<span class="table-thumb-placeholder">🎬</span>';return '<tr><td>'+(i+1)+'</td><td>'+posterCell+'</td><td><div class="table-name"><span>'+escapeHtml(m.name)+'</span></div></td><td>'+escapeHtml(m.year)+'</td><td><div class="table-actions"><button class="iconbtn" data-action="edit" data-id="'+escapeHtml(m.id)+'" aria-label="Edit '+escapeHtml(m.name)+'" title="Edit">✎</button><button class="iconbtn" data-action="delete" data-id="'+escapeHtml(m.id)+'" aria-label="Delete '+escapeHtml(m.name)+'" title="Delete">×</button></div></td></tr>'}).join('');
  $('movieGrid').innerHTML=rows||'<tr><td colspan="5"><div class="empty"><b>'+(all.some(m=>m.language===activeLanguage)?'No matching movies':'No '+activeLanguage.toLowerCase()+' movies yet')+'</b>'+(q?'Try another search.':'Add a movie using the form and select this section.')+'</div></td></tr>';
 }
-$('movieGrid').addEventListener('click',e=>{const b=e.target.closest('button[data-action]');if(!b)return;b.dataset.action==='edit'?editMovie(b.dataset.id):openDelete(b.dataset.id)});
+$('movieGrid').addEventListener('click',e=>{const image=e.target.closest('img.table-thumb');if(image){showPoster(image.dataset.posterSrc||image.src,image.dataset.posterAlt||image.alt);return}const b=e.target.closest('button[data-action]');if(!b)return;b.dataset.action==='edit'?editMovie(b.dataset.id):openDelete(b.dataset.id)});
 document.querySelectorAll('.movie-tab').forEach(tab=>tab.addEventListener('click',()=>{activeLanguage=tab.dataset.language;render()}));$('search').addEventListener('input',render);$('sort').addEventListener('change',render);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('modal').classList.remove('open');deleteId=null}});
 loadMovies().then(()=>{render();drawPreview()}).catch(()=>{render();drawPreview();notify('Library loaded with limited storage support.')});
