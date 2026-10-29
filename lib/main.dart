@@ -126,9 +126,7 @@ class _MovieDashboardState extends State<MovieDashboard> {
         await _sharedRoot!.create(recursive: true);
         await _sharedPosters.create(recursive: true);
         final cloudJson = jsonEncode(_serializedMovies(relativePosters: true));
-        final temp = File('${_sharedDatabase.path}.tmp');
-        await temp.writeAsString(cloudJson, flush: true);
-        await temp.rename(_sharedDatabase.path);
+        await _sharedDatabase.writeAsString(cloudJson, flush: true);
         _lastCloudContent = cloudJson;
         if (mounted) setState(() => _syncMessage = 'Saved to Google Drive folder');
       } catch (_) {
