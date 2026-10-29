@@ -13,7 +13,7 @@
 .movie-table{width:max-content;max-width:100%;border-collapse:collapse;min-width:0;text-align:left}.table-wrap{display:inline-block;max-width:100%;vertical-align:top}
 .movie-table th{background:#222337;color:#c9c2ff;font-size:11px;text-transform:uppercase;letter-spacing:.1em;padding:13px 15px;white-space:nowrap}
 .movie-table td{padding:12px 15px;border-top:1px solid var(--line);vertical-align:middle}
-.movie-table tbody tr:hover{background:#22233780}
+.movie-table tbody tr:hover{background:#22233780}.movie-table .section-row td{background:#292744;color:#ded8ff;border-top:2px solid #514777;padding:10px 15px;letter-spacing:.06em}.section-row .table-category{margin-left:8px;font-weight:700;letter-spacing:0}
 .table-name{display:flex;align-items:center;gap:11px;font-weight:750}
 .table-thumb{width:50px;height:70px;border-radius:5px;object-fit:cover;background:#292a3d;flex-shrink:0}
 .table-thumb-placeholder{width:50px;height:70px;border-radius:5px;background:#292a3d;display:grid;place-items:center;flex-shrink:0}
@@ -26,12 +26,12 @@
 <body>
 <div class="wrap">
 <header class="top"><div class="brand"><div class="logo">▶</div><div><div class="eyebrow">YOUR PERSONAL CINEMA</div><h1>CHAYAN ENTERTAINMENT</h1></div></div><div class="topnote">A little place for every great film.</div></header>
-<section class="hero"><div><h2>Your movie universe.</h2><p>Collect the films you love, one poster at a time.</p></div><div class="counter-group"><div class="stat"><small>TOTAL MOVIES</small><strong id="countMovies">0</strong></div></div></section>
+<section class="hero"><div><h2>Your movie universe.</h2><p>Collect the films you love, one poster at a time.</p></div><div class="counter-group"><div class="stat"><small>TOTAL MOVIES</small><strong id="countMovies">0</strong></div><div class="stat"><small>BENGALI</small><strong id="countBengali">0</strong></div><div class="stat"><small>HINDI</small><strong id="countHindi">0</strong></div><div class="stat"><small>ENGLISH</small><strong id="countEnglish">0</strong></div><div class="stat"><small>OTHER</small><strong id="countOther">0</strong></div></div></section>
 <main class="columns">
 <aside class="panel form-panel"><div class="panel-title"><h3 id="formTitle">ADD TO YOUR LIBRARY</h3><span class="pill" id="formPill">NEW MOVIE</span></div>
 <form id="movieForm">
 <label for="movieName">Movie name *</label><input class="field" id="movieName" maxlength="120" placeholder="e.g. Pather Panchali" required>
-<label for="movieYear">Release year *</label><input class="field" id="movieYear" type="number" min="1888" max="2100" placeholder="e.g. 1955" required>
+<label for="movieYear">Release year *</label><input class="field" id="movieYear" type="number" min="1888" max="2100" placeholder="e.g. 1955" required><label for="movieLanguage">Section / language *</label><select class="field" id="movieLanguage" required><option value="Bengali">Bengali</option><option value="Hindi">Hindi</option><option value="English">English</option><option value="Other">Other</option></select>
 <label for="posterUrl">Poster image</label><input class="field" id="posterUrl" type="text" placeholder="Paste image with Ctrl+V or enter image URL"><input id="posterFile" type="file" accept="image/*" hidden><button class="btn secondary" type="button" id="choosePoster" style="width:100%;margin-top:8px">Choose image file…</button>
 <p class="help">Choose an image file, paste an image into this field with Ctrl+V, or enter a direct image URL. Library is saved in browser storage.</p>
 <div class="poster-preview" id="preview"><span>🎬</span><span>Poster preview will appear here</span></div>
@@ -50,12 +50,12 @@
 'use strict';
 const KEY='chayan-entertainment-web-movies-v1';
 const $=id=>document.getElementById(id);
-const form=$('movieForm'), name=$('movieName'), year=$('movieYear'), poster=$('posterUrl');
+const form=$('movieForm'), name=$('movieName'), year=$('movieYear'), language=$('movieLanguage'), poster=$('posterUrl');
 let movies=[], editingId=null, deleteId=null, toastTimer;
 const escapeHtml=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function openDatabase(){return new Promise((resolve,reject)=>{if(!('indexedDB' in window)){reject(new Error('IndexedDB unavailable'));return}const req=indexedDB.open('ChayanEntertainmentDB',1);req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains('library'))req.result.createObjectStore('library')};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||new Error('Database open failed'))})}
 async function loadMovies(){try{const db=await openDatabase();const data=await new Promise((resolve,reject)=>{const tx=db.transaction('library','readonly');const req=tx.objectStore('library').get('movies');req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)});db.close();if(Array.isArray(data)){movies=data.filter(m=>m&&typeof m.name==='string'&&typeof m.id==='string');return} }catch(e){console.warn('IndexedDB load fallback:',e)}
-try{const saved=JSON.parse(localStorage.getItem(KEY)||'[]');if(Array.isArray(saved))movies=saved.filter(m=>m&&typeof m.name==='string'&&typeof m.id==='string')}catch(_){movies=[]}}
+try{const saved=JSON.parse(localStorage.getItem(KEY)||'[]');if(Array.isArray(saved)&&saved.length)movies=saved.filter(m=>m&&typeof m.name==='string'&&typeof m.id==='string')}catch(_){movies=[]}movies=movies.map(m=>({...m,language:['Bengali','Hindi','English','Other'].includes(m.language)?m.language:'Other'}))}
 async function save(){try{const db=await openDatabase();await new Promise((resolve,reject)=>{const tx=db.transaction('library','readwrite');tx.objectStore('library').put(movies,'movies');tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error('Save failed'));tx.onabort=()=>reject(tx.error||new Error('Save aborted'))});db.close();try{localStorage.setItem(KEY,JSON.stringify(movies.map(m=>({...m,posterUrl:(m.posterUrl||'').startsWith('data:image/')?'':m.posterUrl||''}))))}catch(_){}return true}catch(e){console.error('IndexedDB save failed:',e);try{localStorage.setItem(KEY,JSON.stringify(movies));return true}catch(_){notify('Could not save this movie. Browser storage may be blocked or full. Try a smaller poster image.');return false}}}
 function notify(msg){$('toast').textContent=msg;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),2700)}
 function safeUrl(value){if(/^data:image\/(png|jpeg|webp);base64,/i.test(value))return value;try{const u=new URL(value);return ['http:','https:'].includes(u.protocol)?u.href:''}catch(_){return ''}}
@@ -85,18 +85,35 @@ document.addEventListener('paste',async e=>{
  catch(_){notify('Could not read that clipboard image. Try the Choose image file option.')}
 });
 
-function resetForm(){form.reset();year.value='';editingId=null;$('formTitle').textContent='ADD TO YOUR LIBRARY';$('formPill').textContent='NEW MOVIE';$('saveBtn').textContent='＋ Add movie';$('cancelBtn').hidden=true;drawPreview()}
+function resetForm(){form.reset();year.value='';language.value='Bengali';editingId=null;$('formTitle').textContent='ADD TO YOUR LIBRARY';$('formPill').textContent='NEW MOVIE';$('saveBtn').textContent='＋ Add movie';$('cancelBtn').hidden=true;drawPreview()}
 $('cancelBtn').addEventListener('click',resetForm);
 form.addEventListener('submit',async e=>{e.preventDefault();const title=name.value.trim(),y=Number(year.value),url=safeUrl(poster.value.trim());if(!title){name.focus();return}if(!Number.isInteger(y)||y<1888||y>2100){year.focus();notify('Enter a valid release year between 1888 and 2100.');return}if(poster.value.trim()&&!url){poster.focus();notify('Enter an http(s) image URL or paste an image directly.');return}
-const wasEditing=Boolean(editingId);const previous=movies.slice();const now=new Date().toISOString();if(editingId){const i=movies.findIndex(m=>m.id===editingId);if(i<0){notify('Movie not found. Please try again.');resetForm();return}movies[i]={...movies[i],name:title,year:y,posterUrl:url,updatedAt:now}}else{movies.unshift({id:(window.crypto&&crypto.randomUUID)?crypto.randomUUID():String(Date.now())+'-'+Math.random().toString(36).slice(2),name:title,year:y,posterUrl:url,createdAt:now,updatedAt:now})}
+const section=language.value;const wasEditing=Boolean(editingId);const previous=movies.slice();const now=new Date().toISOString();if(editingId){const i=movies.findIndex(m=>m.id===editingId);if(i<0){notify('Movie not found. Please try again.');resetForm();return}movies[i]={...movies[i],name:title,year:y,language:section,posterUrl:url,updatedAt:now}}else{movies.unshift({id:(window.crypto&&crypto.randomUUID)?crypto.randomUUID():String(Date.now())+'-'+Math.random().toString(36).slice(2),name:title,year:y,language:section,posterUrl:url,createdAt:now,updatedAt:now})}
 if(!await save()){movies=previous;return}render();resetForm();notify(wasEditing?'Movie updated successfully.':'Movie added successfully.')});
-function editMovie(id){const m=movies.find(x=>x.id===id);if(!m)return;editingId=id;name.value=m.name;year.value=m.year;poster.value=m.posterUrl||'';$('formTitle').textContent='EDIT MOVIE';$('formPill').textContent='EDITING';$('saveBtn').textContent='✓ Save changes';$('cancelBtn').hidden=false;drawPreview();document.querySelector('.form-panel').scrollIntoView({behavior:'smooth',block:'start'});name.focus()}
+function editMovie(id){const m=movies.find(x=>x.id===id);if(!m)return;editingId=id;name.value=m.name;year.value=m.year;language.value=['Bengali','Hindi','English','Other'].includes(m.language)?m.language:'Other';poster.value=m.posterUrl||'';$('formTitle').textContent='EDIT MOVIE';$('formPill').textContent='EDITING';$('saveBtn').textContent='✓ Save changes';$('cancelBtn').hidden=false;drawPreview();document.querySelector('.form-panel').scrollIntoView({behavior:'smooth',block:'start'});name.focus()}
 function openDelete(id){deleteId=id;const m=movies.find(x=>x.id===id);$('deleteCopy').textContent='“'+(m?.name||'This movie')+'” will be removed from this browser’s library.';$('modal').classList.add('open')}
 $('deleteCancel').addEventListener('click',()=>{$('modal').classList.remove('open');deleteId=null});
 $('modal').addEventListener('click',e=>{if(e.target===$('modal')){$('modal').classList.remove('open');deleteId=null}});
 $('deleteConfirm').addEventListener('click',async()=>{if(!deleteId)return;const previous=movies.slice();movies=movies.filter(m=>m.id!==deleteId);if(!await save()){movies=previous;return}if(editingId===deleteId)resetForm();$('modal').classList.remove('open');deleteId=null;render();notify('Movie removed.')});
 function posterMarkup(m){if(m.posterUrl)return '<img loading="lazy" src="'+escapeHtml(m.posterUrl)+'" alt="'+escapeHtml(m.name)+' poster" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'grid\'"><div class="placeholder" style="display:none">🎬</div>';return '<div class="placeholder">🎬</div>'}
-function render(){const q=$('search').value.trim().toLowerCase(),sort=$('sort').value;let shown=movies.filter(m=>m.name.toLowerCase().includes(q)||String(m.year).includes(q));$('countMovies').textContent=movies.length.toLocaleString();shown.sort((a,b)=>sort==='oldest'?a.year-b.year:sort==='newest'?new Date(b.createdAt||0)-new Date(a.createdAt||0):a.name.localeCompare(b.name,undefined,{sensitivity:'base'}));$('results').textContent=shown.length+' movie'+(shown.length===1?'':'s')+' shown';$('movieGrid').innerHTML=shown.length?shown.map((m,i)=>'<tr><td>'+(i+1)+'</td><td>'+(m.posterUrl?'<img class="table-thumb" loading="lazy" src="'+escapeHtml(m.posterUrl)+'" alt="" onerror="this.style.display=\\'none\\'">':'<span class="table-thumb-placeholder">🎬</span>')+'</td><td><div class="table-name"><span>'+escapeHtml(m.name)+'</span></div></td><td>'+escapeHtml(m.year)+'</td><td><div class="table-actions"><button class="iconbtn" data-action="edit" data-id="'+escapeHtml(m.id)+'" aria-label="Edit '+escapeHtml(m.name)+'" title="Edit">✎</button><button class="iconbtn" data-action="delete" data-id="'+escapeHtml(m.id)+'" aria-label="Delete '+escapeHtml(m.name)+'" title="Delete">×</button></div></td></tr>').join(''):'<tr><td colspan="5"><div class="empty"><b>'+(movies.length?'No matching movies':'Your library is empty')+'</b>'+(movies.length?'Try another search.':'Add a movie using the form.')+'</div></td></tr>'}
+function render(){
+ const q=$('search').value.trim().toLowerCase(),sort=$('sort').value;
+ const languages=['Bengali','Hindi','English','Other'];
+ const all=movies.map(m=>({...m,language:languages.includes(m.language)?m.language:'Other'}));
+ const shown=all.filter(m=>m.name.toLowerCase().includes(q)||String(m.year).includes(q)||m.language.toLowerCase().includes(q));
+ $('countMovies').textContent=all.length.toLocaleString();
+ for(const lang of languages){const id='count'+lang;$ (id);$(id).textContent=all.filter(m=>m.language===lang).length.toLocaleString()}
+ const sortRows=arr=>arr.sort((a,b)=>sort==='oldest'?a.year-b.year:sort==='newest'?new Date(b.createdAt||0)-new Date(a.createdAt||0):a.name.localeCompare(b.name,undefined,{sensitivity:'base'}));
+ $('results').textContent=shown.length+' movie'+(shown.length===1?'':'s')+' shown';
+ let serial=0,rows='';
+ for(const lang of languages){
+   const group=sortRows(shown.filter(m=>m.language===lang));
+   if(!group.length)continue;
+   rows+='<tr class="section-row"><td colspan="5"><strong>'+lang.toUpperCase()+' MOVIES</strong> <span class="table-category">'+group.length+' movie'+(group.length===1?'':'s')+'</span></td></tr>';
+   rows+=group.map(m=>{serial++;return '<tr><td>'+serial+'</td><td>'+(m.posterUrl?'<img class="table-thumb" loading="lazy" src="'+escapeHtml(m.posterUrl)+'" alt="" onerror="this.style.display=\\'none\\'">':'<span class="table-thumb-placeholder">🎬</span>')+'</td><td><div class="table-name"><span>'+escapeHtml(m.name)+'</span></div></td><td>'+escapeHtml(m.year)+'</td><td><div class="table-actions"><button class="iconbtn" data-action="edit" data-id="'+escapeHtml(m.id)+'" aria-label="Edit '+escapeHtml(m.name)+'" title="Edit">✎</button><button class="iconbtn" data-action="delete" data-id="'+escapeHtml(m.id)+'" aria-label="Delete '+escapeHtml(m.name)+'" title="Delete">×</button></div></td></tr>'}).join('');
+ }
+ $('movieGrid').innerHTML=rows||'<tr><td colspan="5"><div class="empty"><b>'+(movies.length?'No matching movies':'Your library is empty')+'</b>'+(movies.length?'Try another search.':'Add a movie using the form.')+'</div></td></tr>';
+}
 $('movieGrid').addEventListener('click',e=>{const b=e.target.closest('button[data-action]');if(!b)return;b.dataset.action==='edit'?editMovie(b.dataset.id):openDelete(b.dataset.id)});
 $('search').addEventListener('input',render);$('sort').addEventListener('change',render);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('modal').classList.remove('open');deleteId=null}});
