@@ -24,6 +24,8 @@
 .table-thumb{width:3cm;height:4cm;min-width:3cm;min-height:4cm;border-radius:5px;object-fit:cover;background:#292a3d;flex-shrink:0;display:block;cursor:zoom-in}
 .table-thumb-placeholder{width:3cm;height:4cm;min-width:3cm;min-height:4cm;border-radius:5px;background:#292a3d;display:grid;place-items:center;flex-shrink:0}
 .table-category{font-size:10px;color:#bdb4ff;background:#302b4a;border-radius:6px;padding:5px 8px;white-space:nowrap}
+.pdf-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:18px 0 0;padding:14px;border:1px solid var(--line);border-radius:12px;background:#181925}.pdf-actions #pdfHint{font-size:11px;color:var(--muted)}
+@media print{body{background:#fff!important;color:#111!important;font-size:11pt}.wrap{width:100%;margin:0}.top{padding:0 0 12px;border-bottom:1px solid #bbb}.eyebrow,.hero p,.footer{color:#444!important}.hero{padding:16px 0}.hero h2,.brand h1{color:#111!important}.universe-tabs,.form-panel,.toolbar,.movie-tabs,.pdf-actions,.card-actions,.table-actions,.footer,.toast,.modal-backdrop,.image-lightbox{display:none!important}.columns{display:block}.panel,.table-wrap{border:0;box-shadow:none;background:#fff}.movie-table{width:100%;max-width:100%;border-collapse:collapse}.movie-table th{background:#eee!important;color:#111!important}.movie-table td,.movie-table th{border:1px solid #bbb;padding:7px;color:#111!important}.movie-table .section-row td{background:#eee!important;color:#111!important}.table-thumb,.table-thumb-placeholder{width:1.8cm;height:2.4cm;min-width:1.8cm;min-height:2.4cm}.table-name{color:#111!important}.stat{background:#fff!important;border:1px solid #bbb!important;color:#111!important}.stat small{color:#444!important}.stat strong{color:#111!important}a{color:#111!important}tr{break-inside:avoid}thead{display:table-header-group}}
 .table-actions{display:flex;gap:5px}
 @media(max-width:680px){.movie-table th,.movie-table td{padding:10px 11px}}
 
@@ -51,6 +53,7 @@
 </aside>
 <section class="library"><div class="toolbar"><div class="searchbox"><span>⌕</span><input class="field" id="search" type="search" placeholder="Search your movie library…"></div><select class="field sort" id="sort" aria-label="Sort movies"><option value="title">Movie name A–Z</option><option value="oldest">Year: oldest first</option><option value="newest">Recently added</option></select></div>
 <div class="movie-tabs" role="tablist" aria-label="Movie language sections"><button class="movie-tab active" type="button" role="tab" aria-selected="true" data-language="Bengali">Bengali Movies <span id="tabCountBengali">0</span></button><button class="movie-tab" type="button" role="tab" aria-selected="false" data-language="Hindi">Hindi Movies <span id="tabCountHindi">0</span></button><button class="movie-tab" type="button" role="tab" aria-selected="false" data-language="English">English Movies <span id="tabCountEnglish">0</span></button></div><p class="results" id="results">0 movies shown</p><div class="table-wrap"><table class="movie-table" aria-live="polite"><thead><tr><th>Sl. No.</th><th>Poster</th><th>Name</th><th>Year</th><th>Actions</th></tr></thead><tbody id="movieGrid"></tbody></table></div>
+<div class="pdf-actions"><button class="btn secondary" type="button" id="pdfPreviewBtn">⤓ Preview / Save This Section as PDF</button><span id="pdfHint">Opens your browser’s print preview. Choose “Save as PDF”.</span></div>
 </section></main>
 <footer class="footer">CHAYAN ENTERTAINMENT · YOUR LIBRARY, YOUR WAY</footer>
 </div>
@@ -130,6 +133,7 @@ function render(){
 }
 $('movieGrid').addEventListener('click',e=>{const image=e.target.closest('img.table-thumb');if(image){showPoster(image.dataset.posterSrc||image.src,image.dataset.posterAlt||image.alt);return}const b=e.target.closest('button[data-action]');if(!b)return;b.dataset.action==='edit'?editMovie(b.dataset.id):openDelete(b.dataset.id)});
 document.querySelectorAll('.movie-tab').forEach(tab=>tab.addEventListener('click',()=>{activeLanguage=tab.dataset.language;render()}));$('search').addEventListener('input',render);$('sort').addEventListener('change',render);
+$('pdfPreviewBtn').addEventListener('click',()=>{const original=document.title;document.title='Chayan Entertainment - '+activeLanguage+' '+(activeUniverse==='movies'?'Movies':'Web Series');notify('Print preview opened. Choose “Save as PDF” to create your PDF.');window.print();document.title=original});
 document.querySelectorAll('.universe-tab').forEach(tab=>tab.addEventListener('click',async()=>{
  if(activeUniverse===tab.dataset.universe)return;
  activeUniverse=tab.dataset.universe;
