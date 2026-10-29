@@ -124,7 +124,7 @@ class _MovieDashboardState extends State<MovieDashboard> {
       1, (count, list) => list.length > count ? list.length : count,
     );
     const letterWidth = 110.0;
-    const movieColumnWidth = 290.0;
+    const movieColumnWidth = 302.0; // approximately 8 cm at 96 DPI
 
     Widget cellBorder({required Widget child, required double width, required double height, Color? color}) {
       return Container(
@@ -142,7 +142,7 @@ class _MovieDashboardState extends State<MovieDashboard> {
     Widget movieCell(Movie? movie) {
       if (movie == null) {
         return cellBorder(
-          width: movieColumnWidth, height: 122,
+          width: movieColumnWidth, height: 189,
           child: const SizedBox.expand(),
         );
       }
@@ -155,7 +155,7 @@ class _MovieDashboardState extends State<MovieDashboard> {
             ClipRRect(
               borderRadius: BorderRadius.circular(5),
               child: SizedBox(
-                width: 68, height: 104,
+                width: 78, height: 150,
                 child: hasPoster
                   ? Image.file(File(movie.poster), fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => _posterPlaceholder())
@@ -235,7 +235,7 @@ class _MovieDashboardState extends State<MovieDashboard> {
               for (final letter in letters)
                 Row(children: [
                   cellBorder(
-                    width: letterWidth, height: 122,
+                    width: letterWidth, height: 189,
                     color: const Color(0xFF25263A),
                     child: Text(letter, style: const TextStyle(
                       fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFFC6BEFF))),
