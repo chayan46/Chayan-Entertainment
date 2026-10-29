@@ -102,6 +102,125 @@ class _MovieDashboardState extends State<MovieDashboard> {
     return list;
   }
 
+  Widget _alphabeticalTable(List<Movie> movies) {
+    final letters = List<String>.generate(26, (i) => String.fromCharCode(65 + i));
+    final grouped = <String, List<Movie>>{
+      for (final letter in letters) letter: <Movie>[],
+    };
+    for (final movie in movies) {
+      final trimmed = movie.name.trim();
+      if (trimmed.isEmpty) continue;
+      final first = trimmed[0].toUpperCase();
+      if (grouped.containsKey(first)) grouped[first]!.add(movie);
+    }
+    for (final list in grouped.values) {
+      list.sort((a, b) {
+        final byYear = a.year.compareTo(b.year);
+        return byYear != 0 ? byYear : a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      });
+    }
+    final maxMoviesInRow = grouped.values.fold<int>(
+      0, (maxCount, list) => list.length > maxCount ? list.length : maxCount,
+    );
+    final columns = <DataColumn>[
+      const DataColumn(label: Text('LETTER')),
+      for (var i = 0; i < maxMoviesInRow; i++)
+        DataColumn(label: Text('MOVIE ${i + 1}')),
+    ];
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF171925),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF34364B)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 15, 18, 12),
+          child: Row(children: [
+            const Icon(Icons.view_list_rounded, color: Color(0xFFB4A9FF)),
+            const SizedBox(width: 10),
+            const Expanded(child: Text('ALPHABETICAL MOVIE INDEX',
+              style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.3))),
+            Text('${movies.length} FILMS', style: const TextStyle(color: Color(0xFFB4A9FF), fontWeight: FontWeight.w800)),
+          ]),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: SingleChildScrollView(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                headingRowColor: WidgetStateProperty.all(const Color(0xFF25263A)),
+                dataRowMinHeight: 54,
+                dataRowMaxHeight: 76,
+                columnSpacing: 22,
+                horizontalMargin: 18,
+                columns: columns,
+                rows: [
+                  for (final letter in letters)
+                    DataRow(
+                      cells: [
+                        DataCell(Container(
+                          width: 36, height: 36,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF8172FF).withValues(alpha: .18),
+                            borderRadius: BorderRadius.circular(9),
+                            border: Border.all(color: const Color(0xFF8172FF).withValues(alpha: .55)),
+                          ),
+                          child: Text(letter, style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFFC6BEFF))),
+                        )),
+                        for (final movie in [
+                          ...grouped[letter]!,
+                          ...List<Movie>.filled(maxMoviesInRow - grouped[letter]!.length,
+                            Movie(id: '', name: '', year: 0, poster: '')),
+                        ])
+                          DataCell(movie.id.isEmpty
+                            ? const SizedBox(width: 170)
+                            : SizedBox(
+                                width: 170,
+                                child: Row(children: [
+                                  Expanded(child: Text(movie.name, maxLines: 2, overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontWeight: FontWeight.w700))),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: _yearColor(movie.year).withValues(alpha: .18),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: _yearColor(movie.year).withValues(alpha: .7)),
+                                    ),
+                                    child: Text(movie.year.toString(),
+                                      style: TextStyle(color: _yearColor(movie.year), fontWeight: FontWeight.w900)),
+                                  ),
+                                  IconButton(
+                                    tooltip: 'Remove ${movie.name}',
+                                    onPressed: () => _removeMovie(movie),
+                                    icon: const Icon(Icons.close, size: 17),
+                                  ),
+                                ]),
+                              )),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  Color _yearColor(int year) {
+    const colors = [
+      Color(0xFF64C7B5), Color(0xFF70A8F8), Color(0xFFB39AF8),
+      Color(0xFFF1A7C8), Color(0xFFF1B66E), Color(0xFF9CCB78),
+      Color(0xFF7BC8E8),
+    ];
+    final decade = (year ~/ 10) - 188;
+    return colors[(decade < 0 ? 0 : decade) % colors.length];
+  }
+
   @override
   Widget build(BuildContext context) {
     final movies = _visible;
@@ -155,29 +274,7 @@ class _MovieDashboardState extends State<MovieDashboard> {
             )),
           ]),
           const SizedBox(height: 16),
-          Expanded(child: movies.isEmpty
-            ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                const Icon(Icons.movie_filter_outlined, size: 64, color: Color(0xFF8D87BD)),
-                const SizedBox(height: 16),
-                Text(_search.isEmpty ? 'Your movie dashboard is empty' : 'No matching movies', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-                const SizedBox(height: 8),
-                Text(_search.isEmpty ? 'Add a movie to start building your collection.' : 'Try a different title.'),
-                if (_search.isEmpty) ...[
-                  const SizedBox(height: 18),
-                  FilledButton.icon(onPressed: _addMovie, icon: const Icon(Icons.add), label: const Text('Add your first movie')),
-                ],
-              ]))
-            : LayoutBuilder(builder: (context, box) {
-                final columns = (box.maxWidth / 190).floor().clamp(2, 8);
-                return GridView.builder(
-                  itemCount: movies.length,
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: columns, crossAxisSpacing: 18, mainAxisSpacing: 20, childAspectRatio: .61,
-                  ),
-                  itemBuilder: (_, i) => MovieCard(movie: movies[i], onDelete: () => _removeMovie(movies[i])),
-                );
-              }),
-          ),
+          Expanded(child: _alphabeticalTable(movies)),
         ]),
       ),
       floatingActionButton: FloatingActionButton.extended(onPressed: _addMovie, icon: const Icon(Icons.add), label: const Text('Add movie')),
