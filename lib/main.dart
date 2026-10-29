@@ -125,7 +125,7 @@ class _MovieDashboardState extends State<MovieDashboard> {
       1, (count, list) => list.length > count ? list.length : count,
     );
     const letterWidth = 110.0;
-    const movieColumnWidth = 302.0; // approximately 8 cm at 96 DPI
+    const movieColumnWidth = 189.0; // approximately 5 cm at 96 DPI
 
     Widget cellBorder({required Widget child, required double width, required double height, Color? color}) {
       return Container(
@@ -158,8 +158,50 @@ class _MovieDashboardState extends State<MovieDashboard> {
               child: SizedBox(
                 width: 58, height: 91,
                 child: hasPoster
-                  ? Image.file(File(movie.poster), fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _posterPlaceholder())
+                  ? GestureDetector(
+                      onTap: () => showDialog<void>(
+                        context: context,
+                        barrierColor: Colors.black.withValues(alpha: 0.88),
+                        builder: (previewContext) => Dialog(
+                          backgroundColor: const Color(0xFF171925),
+                          insetPadding: const EdgeInsets.all(28),
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => Navigator.of(previewContext).pop(),
+                            child: Stack(
+                              alignment: Alignment.topRight,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: InteractiveViewer(
+                                    minScale: 0.5,
+                                    maxScale: 4,
+                                    child: Image.file(
+                                      File(movie.poster),
+                                      fit: BoxFit.contain,
+                                      errorBuilder: (_, __, ___) => _posterPlaceholder(),
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  tooltip: 'Close preview',
+                                  onPressed: () => Navigator.of(previewContext).pop(),
+                                  icon: const Icon(Icons.close_rounded),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      child: MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: Image.file(
+                          File(movie.poster),
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _posterPlaceholder(),
+                        ),
+                      ),
+                    )
                   : _posterPlaceholder(),
               ),
             ),
