@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:async';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -51,31 +52,177 @@ class _MovieDashboardState extends State<MovieDashboard> {
   bool _loading = true;
   String _search = '';
   String _selectedCategory = 'Bengali Movie';
+  String? _driveFolder;
+  Timer? _syncTimer;
+  bool _syncBusy = false;
+  String _lastCloudContent = '';
+  String _syncMessage = 'Drive folder not connected';
 
   @override
   void initState() { super.initState(); _load(); }
 
+  @override
+  void dispose() { _syncTimer?.cancel(); super.dispose(); }
+
+  Directory? get _sharedRoot => _driveFolder == null ? null : Directory(_driveFolder!);
+  File get _sharedDatabase => File('$_driveFolder${Platform.pathSeparator}library.json');
+  Directory get _sharedPosters => Directory('$_driveFolder${Platform.pathSeparator}posters');
+
+  File _posterFile(Movie movie) {
+    final poster = movie.poster;
+    if (_driveFolder != null && !File(poster).isAbsolute) {
+      return File('$_driveFolder${Platform.pathSeparator}${poster.replaceAll('/', Platform.pathSeparator)}');
+    }
+    return File(poster);
+  }
+
   Future<void> _load() async {
     try {
       final p = await SharedPreferences.getInstance();
-      final raw = p.getString('movie_dashboard_v1');
+      _driveFolder = p.getString('movie_drive_folder_v1');
+      String? raw;
+      if (_driveFolder != null) {
+        final file = File('$_driveFolder${Platform.pathSeparator}library.json');
+        if (await file.exists()) raw = await file.readAsString();
+      }
+      raw ??= p.getString('movie_dashboard_v1');
       if (raw != null) {
         _movies.addAll((jsonDecode(raw) as List).map((e) =>
           Movie.fromJson(Map<String, dynamic>.from(e as Map))));
       }
-    } catch (_) {}
+      if (_driveFolder != null) {
+        _lastCloudContent = await _readCloudContent();
+        _syncMessage = 'Google Drive folder connected';
+        _startSyncPolling();
+      }
+    } catch (_) {
+      _syncMessage = 'Could not load saved library';
+    }
     if (mounted) setState(() => _loading = false);
   }
 
+  Future<String> _readCloudContent() async {
+    final file = File('$_driveFolder${Platform.pathSeparator}library.json');
+    return await file.exists() ? file.readAsString() : '';
+  }
+
+  List<Map<String, dynamic>> _serializedMovies({bool relativePosters = false}) {
+    return _movies.map((m) {
+      final map = m.toJson();
+      if (relativePosters && m.poster.isNotEmpty) {
+        final path = m.poster;
+        map['poster'] = File(path).isAbsolute ? 'posters${Platform.pathSeparator}${path.split(Platform.pathSeparator).last}' : path.replaceAll('/', Platform.pathSeparator);
+      }
+      return map;
+    }).toList();
+  }
+
   Future<void> _save() async {
+    final localJson = jsonEncode(_movies.map((m) => m.toJson()).toList());
     final p = await SharedPreferences.getInstance();
-    await p.setString('movie_dashboard_v1', jsonEncode(_movies.map((m) => m.toJson()).toList()));
+    await p.setString('movie_dashboard_v1', localJson);
+    if (_driveFolder != null) {
+      try {
+        await _sharedRoot!.create(recursive: true);
+        await _sharedPosters.create(recursive: true);
+        final cloudJson = jsonEncode(_serializedMovies(relativePosters: true));
+        final temp = File('${_sharedDatabase.path}.tmp');
+        await temp.writeAsString(cloudJson, flush: true);
+        await temp.rename(_sharedDatabase.path);
+        _lastCloudContent = cloudJson;
+        if (mounted) setState(() => _syncMessage = 'Saved to Google Drive folder');
+      } catch (_) {
+        if (mounted) setState(() => _syncMessage = 'Drive folder write failed — check Drive availability');
+      }
+    }
+  }
+
+  Future<void> _connectDriveFolder() async {
+    final selected = await FilePicker.platform.getDirectoryPath(dialogTitle: 'Choose a folder inside Google Drive for Chayan Entertainment');
+    if (selected == null) return;
+    final root = Directory('$selected${Platform.pathSeparator}ChayanEntertainment');
+    final posters = Directory('${root.path}${Platform.pathSeparator}posters');
+    try {
+      await root.create(recursive: true);
+      await posters.create(recursive: true);
+      final migrated = <Movie>[];
+      for (final movie in _movies) {
+        var poster = movie.poster;
+        if (poster.isNotEmpty) {
+          final source = File(poster);
+          final filename = source.path.split(Platform.pathSeparator).last;
+          final target = File('${posters.path}${Platform.pathSeparator}$filename');
+          if (await source.exists() && source.path != target.path) await source.copy(target.path);
+          poster = 'posters${Platform.pathSeparator}$filename';
+        }
+        migrated.add(Movie(id: movie.id, name: movie.name, year: movie.year, poster: poster, category: movie.category));
+      }
+      final db = File('${root.path}${Platform.pathSeparator}library.json');
+      if (await db.exists()) {
+        final existing = await db.readAsString();
+        if (existing.trim().isNotEmpty) {
+          final decoded = (jsonDecode(existing) as List).map((e) => Movie.fromJson(Map<String, dynamic>.from(e as Map))).toList();
+          _movies
+            ..clear()
+            ..addAll(decoded);
+        } else {
+          _movies
+            ..clear()
+            ..addAll(migrated);
+        }
+      } else {
+        _movies
+          ..clear()
+          ..addAll(migrated);
+      }
+      _driveFolder = root.path;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('movie_drive_folder_v1', root.path);
+      await _save();
+      _lastCloudContent = await _readCloudContent();
+      _startSyncPolling();
+      if (mounted) setState(() => _syncMessage = 'Google Drive folder connected');
+    } catch (_) {
+      if (mounted) setState(() => _syncMessage = 'Could not connect folder. Choose a writable Google Drive folder.');
+    }
+  }
+
+  void _startSyncPolling() {
+    _syncTimer?.cancel();
+    _syncTimer = Timer.periodic(const Duration(seconds: 5), (_) => _checkForCloudChanges());
+  }
+
+  Future<void> _checkForCloudChanges() async {
+    if (_driveFolder == null || _syncBusy) return;
+    _syncBusy = true;
+    try {
+      final content = await _readCloudContent();
+      if (content.isNotEmpty && content != _lastCloudContent) {
+        final decoded = (jsonDecode(content) as List)
+            .map((e) => Movie.fromJson(Map<String, dynamic>.from(e as Map))).toList();
+        if (mounted) {
+          setState(() {
+            _movies
+              ..clear()
+              ..addAll(decoded);
+            _syncMessage = 'Updated from Google Drive';
+          });
+        }
+        _lastCloudContent = content;
+        final p = await SharedPreferences.getInstance();
+        await p.setString('movie_dashboard_v1', jsonEncode(_movies.map((m) => m.toJson()).toList()));
+      }
+    } catch (_) {
+      if (mounted) setState(() => _syncMessage = 'Sync paused — Google Drive may be updating files');
+    } finally {
+      _syncBusy = false;
+    }
   }
 
   Future<void> _addMovie() async {
     final movie = await showDialog<Movie>(
       context: context, barrierDismissible: false,
-      builder: (_) => MovieEntryDialog(initialCategory: _selectedCategory),
+      builder: (_) => MovieEntryDialog(initialCategory: _selectedCategory, sharedPosterDirectory: _driveFolder == null ? null : _sharedPosters.path),
     );
     if (movie == null) return;
     setState(() {
@@ -153,7 +300,8 @@ class _MovieDashboardState extends State<MovieDashboard> {
           child: const SizedBox.expand(),
         );
       }
-      final hasPoster = movie.poster.isNotEmpty && File(movie.poster).existsSync();
+      final posterFile = _posterFile(movie);
+      final hasPoster = movie.poster.isNotEmpty && posterFile.existsSync();
       return cellBorder(
         width: movieColumnWidth, height: 113,
         child: Padding(
@@ -183,7 +331,7 @@ class _MovieDashboardState extends State<MovieDashboard> {
                                     minScale: 0.5,
                                     maxScale: 4,
                                     child: Image.file(
-                                      File(movie.poster),
+                                      posterFile,
                                       fit: BoxFit.contain,
                                       errorBuilder: (_, __, ___) => _posterPlaceholder(),
                                     ),
@@ -329,10 +477,10 @@ class _MovieDashboardState extends State<MovieDashboard> {
           SizedBox(width: 10),
           Text('CHAYAN ENTERTAINMENT', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2)),
         ]),
-        actions: [Padding(
-          padding: const EdgeInsets.only(right: 18),
-          child: FilledButton.icon(onPressed: _addMovie, icon: const Icon(Icons.add), label: const Text('Add movie')),
-        )],
+        actions: [
+          Tooltip(message: _syncMessage, child: TextButton.icon(onPressed: _connectDriveFolder, icon: Icon(_driveFolder == null ? Icons.cloud_outlined : Icons.cloud_done_rounded), label: Text(_driveFolder == null ? 'Connect Drive' : 'Drive connected'))),
+          Padding(padding: const EdgeInsets.only(right: 18), child: FilledButton.icon(onPressed: _addMovie, icon: const Icon(Icons.add), label: const Text('Add movie'))),
+        ],
       ),
       body: _loading ? const Center(child: CircularProgressIndicator()) : Padding(
         padding: const EdgeInsets.fromLTRB(26, 18, 26, 24),
@@ -444,8 +592,9 @@ class MovieCard extends StatelessWidget {
 }
 
 class MovieEntryDialog extends StatefulWidget {
-  const MovieEntryDialog({super.key, required this.initialCategory});
+  const MovieEntryDialog({super.key, required this.initialCategory, this.sharedPosterDirectory});
   final String initialCategory;
+  final String? sharedPosterDirectory;
   @override
   State<MovieEntryDialog> createState() => _MovieEntryDialogState();
 }
@@ -537,12 +686,12 @@ class _MovieEntryDialogState extends State<MovieEntryDialog> {
 
   Future<String> _savePoster(String sourcePath, String id) async {
     final app = await getApplicationSupportDirectory();
-    final dir = Directory(app.path + Platform.pathSeparator + 'movie_posters');
+    final dir = Directory(widget.sharedPosterDirectory ?? (app.path + Platform.pathSeparator + 'movie_posters'));
     if (!await dir.exists()) await dir.create(recursive: true);
     final ext = sourcePath.contains('.') ? '.' + sourcePath.split('.').last.toLowerCase() : '.img';
     final target = File(dir.path + Platform.pathSeparator + id + ext);
     await File(sourcePath).copy(target.path);
-    return target.path;
+    return widget.sharedPosterDirectory == null ? target.path : 'posters${Platform.pathSeparator}${target.path.split(Platform.pathSeparator).last}';
   }
 
   Future<void> _submit() async {
