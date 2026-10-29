@@ -126,7 +126,7 @@ class _MovieDashboardState extends State<MovieDashboard> {
       1, (count, list) => list.length > count ? list.length : count,
     );
     const letterWidth = 110.0;
-    const movieColumnWidth = 330.0; // widened to keep movie titles on one line
+    const movieColumnWidth = 378.0; // approximately 10 cm at 96 DPI
 
     Widget cellBorder({required Widget child, required double width, required double height, Color? color}) {
       return Container(
