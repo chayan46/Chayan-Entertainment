@@ -119,69 +119,57 @@ class _MovieDashboardState extends State<MovieDashboard> {
         return byYear != 0 ? byYear : a.name.toLowerCase().compareTo(b.name.toLowerCase());
       });
     }
-    final maxMovies = grouped.values.fold<int>(
-      0, (maxCount, list) => list.length > maxCount ? list.length : maxCount,
-    );
-    const letterWidth = 92.0;
-    const movieWidth = 220.0;
 
-    Widget headerCell(String text, {double width = movieWidth}) => Container(
-      width: width, height: 48, alignment: Alignment.center,
-      decoration: const BoxDecoration(color: Color(0xFF25263A)),
-      child: Text(text, textAlign: TextAlign.center,
-        style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFFE5E2FF))),
-    );
+    const letterWidth = 100.0;
+    const detailsWidth = 620.0;
 
-    Widget movieCell(Movie? movie) {
-      if (movie == null) {
-        return Container(
-          width: movieWidth, height: 148,
-          decoration: BoxDecoration(color: const Color(0xFF171925),
-            border: Border.all(color: const Color(0xFF34364B))),
-        );
-      }
+    Widget movieEntry(Movie movie) {
       final exists = movie.poster.isNotEmpty && File(movie.poster).existsSync();
       return Container(
-        width: movieWidth, height: 148,
-        padding: const EdgeInsets.all(9),
-        decoration: BoxDecoration(color: const Color(0xFF171925),
-          border: Border.all(color: const Color(0xFF34364B))),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(children: [
-              const Expanded(child: Text('MOVIE NAME',
-                style: TextStyle(fontSize: 10, color: Color(0xFF9699B2), fontWeight: FontWeight.w800))),
-              Text(movie.year.toString(), style: TextStyle(
-                color: _yearColor(movie.year), fontSize: 11, fontWeight: FontWeight.w900)),
-              const SizedBox(width: 5),
-              IconButton(
-                visualDensity: VisualDensity.compact,
-                constraints: const BoxConstraints.tightFor(width: 26, height: 26),
-                tooltip: 'Remove ${movie.name}',
-                onPressed: () => _removeMovie(movie),
-                icon: const Icon(Icons.close, size: 15),
-              ),
-            ]),
-            Text(movie.name, maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 5),
-            Expanded(child: Row(children: [
-              if (exists)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(5),
-                  child: Image.file(File(movie.poster), width: 64, fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _posterPlaceholder()),
-                )
-              else
-                SizedBox(width: 64, child: _posterPlaceholder()),
-              const SizedBox(width: 8),
-              const Expanded(child: Text('MOVIE POSTER',
-                style: TextStyle(fontSize: 10, color: Color(0xFF9699B2), fontWeight: FontWeight.w800))),
-            ])),
-          ],
+        margin: const EdgeInsets.symmetric(vertical: 7),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF202231),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFF383A51)),
         ),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(7),
+            child: SizedBox(
+              width: 72, height: 96,
+              child: exists
+                ? Image.file(File(movie.poster), fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _posterPlaceholder())
+                : _posterPlaceholder(),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(movie.name, maxLines: 2, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: _yearColor(movie.year).withValues(alpha: .18),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: _yearColor(movie.year).withValues(alpha: .7)),
+                ),
+                child: Text(movie.year.toString(),
+                  style: TextStyle(color: _yearColor(movie.year), fontWeight: FontWeight.w900)),
+              ),
+            ],
+          )),
+          IconButton(
+            tooltip: 'Remove ${movie.name}',
+            onPressed: () => _removeMovie(movie),
+            icon: const Icon(Icons.delete_outline_rounded),
+          ),
+        ]),
       );
     }
 
@@ -210,15 +198,27 @@ class _MovieDashboardState extends State<MovieDashboard> {
             scrollDirection: Axis.horizontal,
             child: Column(children: [
               Row(children: [
-                headerCell('LETTER', width: letterWidth),
-                for (var i = 0; i < maxMovies; i++)
-                  headerCell('MOVIE YEAR', width: movieWidth),
+                Container(
+                  width: letterWidth, height: 48, alignment: Alignment.center,
+                  decoration: const BoxDecoration(color: Color(0xFF25263A),
+                    border: Border.fromBorderSide(BorderSide(color: Color(0xFF34364B)))),
+                  child: const Text('LETTER', style: TextStyle(
+                    fontWeight: FontWeight.w900, color: Color(0xFFE5E2FF))),
+                ),
+                Container(
+                  width: detailsWidth, height: 48, alignment: Alignment.center,
+                  decoration: const BoxDecoration(color: Color(0xFF25263A),
+                    border: Border.fromBorderSide(BorderSide(color: Color(0xFF34364B)))),
+                  child: const Text('MOVIE DETAILS',
+                    style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFFE5E2FF))),
+                ),
               ]),
               for (final letter in letters)
-                Row(children: [
+                Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   Container(
-                    width: letterWidth, height: 148,
-                    alignment: Alignment.center,
+                    width: letterWidth, constraints: const BoxConstraints(minHeight: 112),
+                    alignment: Alignment.topCenter,
+                    padding: const EdgeInsets.only(top: 18),
                     decoration: BoxDecoration(
                       color: const Color(0xFF25263A),
                       border: Border.all(color: const Color(0xFF34364B)),
@@ -226,8 +226,20 @@ class _MovieDashboardState extends State<MovieDashboard> {
                     child: Text(letter, style: const TextStyle(
                       fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFFC6BEFF))),
                   ),
-                  for (var i = 0; i < maxMovies; i++)
-                    movieCell(i < grouped[letter]!.length ? grouped[letter]![i] : null),
+                  Container(
+                    width: detailsWidth,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF171925),
+                      border: Border.all(color: const Color(0xFF34364B)),
+                    ),
+                    child: grouped[letter]!.isEmpty
+                      ? const SizedBox(height: 104)
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [for (final movie in grouped[letter]!) movieEntry(movie)],
+                        ),
+                  ),
                 ]),
             ]),
           ),
