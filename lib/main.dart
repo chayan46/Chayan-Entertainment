@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -380,16 +381,59 @@ class _MovieEntryDialogState extends State<MovieEntryDialog> {
   final _key = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _year = TextEditingController(text: DateTime.now().year.toString());
+  final _posterUrl = TextEditingController();
   String? _poster, _error;
   bool _saving = false;
 
   @override
-  void dispose() { _name.dispose(); _year.dispose(); super.dispose(); }
+  void dispose() { _name.dispose(); _year.dispose(); _posterUrl.dispose(); super.dispose(); }
 
   Future<void> _pickPoster() async {
     final result = await FilePicker.platform.pickFiles(type: FileType.image, allowMultiple: false);
     if (result == null || result.files.single.path == null) return;
     setState(() { _poster = result.files.single.path; _error = null; });
+  }
+
+  Future<void> _usePosterUrl() async {
+    final source = _posterUrl.text.trim();
+    final uri = Uri.tryParse(source);
+    if (uri == null || (uri.scheme != 'https' && uri.scheme != 'http') || uri.host.isEmpty) {
+      setState(() => _error = 'Paste a direct http/https image URL.');
+      return;
+    }
+    setState(() { _saving = true; _error = null; });
+    HttpClient? client;
+    try {
+      client = HttpClient()..connectionTimeout = const Duration(seconds: 20);
+      final request = await client.getUrl(uri);
+      final response = await request.close();
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw HttpException('Image URL returned HTTP ${response.statusCode}');
+      }
+      final bytes = await consolidateHttpClientResponseBytes(response);
+      if (bytes.isEmpty) throw const FormatException('The image is empty.');
+      final contentType = response.headers.contentType?.mimeType ?? '';
+      final pathExt = uri.path.toLowerCase();
+      String ext = pathExt.endsWith('.png') ? '.png'
+        : pathExt.endsWith('.webp') ? '.webp'
+        : pathExt.endsWith('.gif') ? '.gif'
+        : pathExt.endsWith('.jpeg') || pathExt.endsWith('.jpg') ? '.jpg'
+        : contentType.contains('png') ? '.png'
+        : contentType.contains('webp') ? '.webp' : '.jpg';
+      final temp = await getTemporaryDirectory();
+      final file = File(temp.path + Platform.pathSeparator +
+        'poster_from_url_${DateTime.now().microsecondsSinceEpoch}$ext');
+      await file.writeAsBytes(bytes, flush: true);
+      if (!mounted) return;
+      setState(() { _poster = file.path; _saving = false; _error = null; });
+    } catch (_) {
+      if (mounted) setState(() {
+        _saving = false;
+        _error = 'Could not load that image. Use a direct public image URL or choose a local file.';
+      });
+    } finally {
+      client?.close(force: true);
+    }
   }
 
   Future<String> _savePoster(String sourcePath, String id) async {
@@ -437,6 +481,26 @@ class _MovieEntryDialogState extends State<MovieEntryDialog> {
         const SizedBox(height: 16),
         OutlinedButton.icon(onPressed: _saving ? null : _pickPoster, icon: const Icon(Icons.image_outlined),
           label: Text(_poster == null ? 'Choose movie poster' : 'Change poster')),
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: _posterUrl,
+          keyboardType: TextInputType.url,
+          decoration: const InputDecoration(
+            labelText: 'Paste poster image URL',
+            hintText: 'Copy an image address and paste it here',
+            prefixIcon: Icon(Icons.link_rounded),
+          ),
+          onFieldSubmitted: (_) => _saving ? null : _usePosterUrl(),
+        ),
+        const SizedBox(height: 6),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            onPressed: _saving ? null : _usePosterUrl,
+            icon: const Icon(Icons.download_rounded),
+            label: const Text('Use pasted URL'),
+          ),
+        ),
         if (_poster != null) ...[
           const SizedBox(height: 10),
           ClipRRect(borderRadius: BorderRadius.circular(10), child: Image.file(File(_poster!), height: 180, fit: BoxFit.contain,
