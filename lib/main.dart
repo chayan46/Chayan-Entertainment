@@ -26,14 +26,17 @@ class MovieApp extends StatelessWidget {
   );
 }
 
+const movieCategories = ['Bengali Movie', 'Hindi Movie', 'English Movie'];
+
 class Movie {
-  Movie({required this.id, required this.name, required this.year, required this.poster});
-  final String id, name, poster;
+  Movie({required this.id, required this.name, required this.year, required this.poster, this.category = 'English Movie'});
+  final String id, name, poster, category;
   final int year;
-  Map<String, dynamic> toJson() => {'id': id, 'name': name, 'year': year, 'poster': poster};
+  Map<String, dynamic> toJson() => {'id': id, 'name': name, 'year': year, 'poster': poster, 'category': category};
   factory Movie.fromJson(Map<String, dynamic> j) => Movie(
     id: j['id'] as String, name: j['name'] as String,
     year: j['year'] as int, poster: j['poster'] as String? ?? '',
+    category: movieCategories.contains(j['category']) ? j['category'] as String : 'English Movie',
   );
 }
 
@@ -47,6 +50,7 @@ class _MovieDashboardState extends State<MovieDashboard> {
   final List<Movie> _movies = [];
   bool _loading = true;
   String _search = '';
+  String _selectedCategory = 'Bengali Movie';
 
   @override
   void initState() { super.initState(); _load(); }
@@ -71,11 +75,12 @@ class _MovieDashboardState extends State<MovieDashboard> {
   Future<void> _addMovie() async {
     final movie = await showDialog<Movie>(
       context: context, barrierDismissible: false,
-      builder: (_) => const MovieEntryDialog(),
+      builder: (_) => MovieEntryDialog(initialCategory: _selectedCategory),
     );
     if (movie == null) return;
     setState(() {
       _movies.add(movie);
+      _selectedCategory = movie.category;
       _movies.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     });
     await _save();
@@ -96,7 +101,7 @@ class _MovieDashboardState extends State<MovieDashboard> {
   }
 
   List<Movie> get _visible {
-    final list = _movies.where((m) => m.name.toLowerCase().contains(_search.toLowerCase())).toList();
+    final list = _movies.where((m) => m.category == _selectedCategory && m.name.toLowerCase().contains(_search.toLowerCase())).toList();
     list.sort((a, b) {
       final byName = a.name.toLowerCase().compareTo(b.name.toLowerCase());
       return byName != 0 ? byName : a.year.compareTo(b.year);
@@ -313,6 +318,10 @@ class _MovieDashboardState extends State<MovieDashboard> {
   @override
   Widget build(BuildContext context) {
     final movies = _visible;
+    final categoryCounts = <String, int>{
+      for (final category in movieCategories)
+        category: _movies.where((m) => m.category == category).length,
+    };
     return Scaffold(
       appBar: AppBar(
         title: const Row(children: [
@@ -352,10 +361,30 @@ class _MovieDashboardState extends State<MovieDashboard> {
             ]),
           ),
           const SizedBox(height: 22),
+          Row(
+            children: [
+              for (final category in movieCategories)
+                Padding(
+                  padding: const EdgeInsets.only(right: 10),
+                  child: ChoiceChip(
+                    selected: _selectedCategory == category,
+                    label: Text('$category  •  ${categoryCounts[category]}'),
+                    onSelected: (_) => setState(() => _selectedCategory = category),
+                    selectedColor: const Color(0xFF8172FF),
+                    labelStyle: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: _selectedCategory == category ? Colors.white : const Color(0xFFE5E2FF),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
           Row(children: [
             Text('YOUR COLLECTION', style: Theme.of(context).textTheme.titleMedium?.copyWith(letterSpacing: 1.5, fontWeight: FontWeight.w800)),
             const SizedBox(width: 12),
-            Chip(label: Text(_movies.length.toString() + ' MOVIES')),
+            Chip(label: Text(categoryCounts[_selectedCategory].toString() + ' MOVIES')),
             const Spacer(),
             SizedBox(width: 260, child: TextField(
               onChanged: (v) => setState(() => _search = v.trim()),
@@ -415,7 +444,8 @@ class MovieCard extends StatelessWidget {
 }
 
 class MovieEntryDialog extends StatefulWidget {
-  const MovieEntryDialog({super.key});
+  const MovieEntryDialog({super.key, required this.initialCategory});
+  final String initialCategory;
   @override
   State<MovieEntryDialog> createState() => _MovieEntryDialogState();
 }
@@ -426,6 +456,7 @@ class _MovieEntryDialogState extends State<MovieEntryDialog> {
   final _year = TextEditingController(text: DateTime.now().year.toString());
   final _posterUrl = TextEditingController();
   String? _poster, _error;
+  late String _category = widget.initialCategory;
   bool _saving = false;
 
   @override
@@ -522,7 +553,7 @@ class _MovieEntryDialogState extends State<MovieEntryDialog> {
       final id = DateTime.now().microsecondsSinceEpoch.toString();
       final savedPoster = await _savePoster(_poster!, id);
       if (!mounted) return;
-      Navigator.pop(context, Movie(id: id, name: _name.text.trim(), year: int.parse(_year.text.trim()), poster: savedPoster));
+      Navigator.pop(context, Movie(id: id, name: _name.text.trim(), year: int.parse(_year.text.trim()), poster: savedPoster, category: _category));
     } catch (_) {
       if (mounted) setState(() { _saving = false; _error = 'Could not save poster. Please choose another image.'; });
     }
@@ -533,8 +564,22 @@ class _MovieEntryDialogState extends State<MovieEntryDialog> {
     title: const Text('Add a movie'),
     content: SizedBox(width: 460, child: SingleChildScrollView(child: Form(
       key: _key, child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        const Text('Enter the film details and select its poster.'),
+        const Text('Choose the collection and enter the film details.'),
         const SizedBox(height: 18),
+        DropdownButtonFormField<String>(
+          value: _category,
+          decoration: const InputDecoration(
+            labelText: 'Movie collection',
+            prefixIcon: Icon(Icons.category_outlined),
+          ),
+          items: movieCategories.map((category) => DropdownMenuItem<String>(
+            value: category, child: Text(category),
+          )).toList(),
+          onChanged: _saving ? null : (value) {
+            if (value != null) setState(() => _category = value);
+          },
+        ),
+        const SizedBox(height: 14),
         TextFormField(controller: _name, autofocus: true,
           decoration: const InputDecoration(labelText: 'Movie name', hintText: 'e.g. Interstellar', prefixIcon: Icon(Icons.movie_outlined)),
           validator: (v) => v == null || v.trim().isEmpty ? 'Enter a movie name' : null),
