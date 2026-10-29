@@ -126,7 +126,7 @@ class _MovieDashboardState extends State<MovieDashboard> {
       1, (count, list) => list.length > count ? list.length : count,
     );
     const letterWidth = 110.0;
-    const movieColumnWidth = 189.0; // approximately 5 cm at 96 DPI
+    const movieColumnWidth = 330.0; // widened to keep movie titles on one line
 
     Widget cellBorder({required Widget child, required double width, required double height, Color? color}) {
       return Container(
@@ -211,7 +211,7 @@ class _MovieDashboardState extends State<MovieDashboard> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(movie.name, maxLines: 2, overflow: TextOverflow.ellipsis,
+                Text(movie.name, maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 9),
                 Container(
@@ -272,7 +272,7 @@ class _MovieDashboardState extends State<MovieDashboard> {
                   cellBorder(
                     width: movieColumnWidth, height: 54,
                     color: const Color(0xFF25263A),
-                    child: const Text('MOVIE DETAILS', textAlign: TextAlign.center,
+                    child: const Text('DETAILS', textAlign: TextAlign.center,
                       style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFFE5E2FF))),
                   ),
               ]),
