@@ -1,4 +1,5 @@
 name: Deploy Movie Dashboard to GitHub Pages
+# A fresh push-triggered run avoids duplicate artifacts left by a previous rerun.
 
 on:
   push:
