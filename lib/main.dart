@@ -115,30 +115,42 @@ class _MovieDashboardState extends State<MovieDashboard> {
     }
     for (final list in grouped.values) {
       list.sort((a, b) {
-        final byYear = a.year.compareTo(b.year);
-        return byYear != 0 ? byYear : a.name.toLowerCase().compareTo(b.name.toLowerCase());
+        final byName = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+        return byName != 0 ? byName : a.year.compareTo(b.year);
       });
     }
 
+    const tableWidth = 760.0;
     const letterWidth = 100.0;
-    const detailsWidth = 620.0;
+    const detailsWidth = tableWidth - letterWidth;
+
+    Widget headerCell(String label, double width) => Container(
+      width: width, height: 48, alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: const Color(0xFF25263A),
+        border: Border.all(color: const Color(0xFF34364B)),
+      ),
+      child: Text(label, style: const TextStyle(
+        fontWeight: FontWeight.w900, color: Color(0xFFE5E2FF))),
+    );
 
     Widget movieEntry(Movie movie) {
-      final exists = movie.poster.isNotEmpty && File(movie.poster).existsSync();
+      final hasPoster = movie.poster.isNotEmpty && File(movie.poster).existsSync();
       return Container(
-        margin: const EdgeInsets.symmetric(vertical: 7),
-        padding: const EdgeInsets.all(10),
+        height: 124,
+        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        padding: const EdgeInsets.all(9),
         decoration: BoxDecoration(
           color: const Color(0xFF202231),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(9),
           border: Border.all(color: const Color(0xFF383A51)),
         ),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+        child: Row(children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(7),
+            borderRadius: BorderRadius.circular(6),
             child: SizedBox(
-              width: 72, height: 96,
-              child: exists
+              width: 74, height: 104,
+              child: hasPoster
                 ? Image.file(File(movie.poster), fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => _posterPlaceholder())
                 : _posterPlaceholder(),
@@ -146,22 +158,26 @@ class _MovieDashboardState extends State<MovieDashboard> {
           ),
           const SizedBox(width: 14),
           Expanded(child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(movie.name, maxLines: 2, overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
               const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: _yearColor(movie.year).withValues(alpha: .18),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: _yearColor(movie.year).withValues(alpha: .7)),
+              Row(children: [
+                const Text('YEAR  ', style: TextStyle(
+                  color: Color(0xFF9699B2), fontSize: 11, fontWeight: FontWeight.w800)),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _yearColor(movie.year).withValues(alpha: .18),
+                    borderRadius: BorderRadius.circular(7),
+                    border: Border.all(color: _yearColor(movie.year).withValues(alpha: .7)),
+                  ),
+                  child: Text(movie.year.toString(),
+                    style: TextStyle(color: _yearColor(movie.year), fontWeight: FontWeight.w900)),
                 ),
-                child: Text(movie.year.toString(),
-                  style: TextStyle(color: _yearColor(movie.year), fontWeight: FontWeight.w900)),
-              ),
+              ]),
             ],
           )),
           IconButton(
@@ -194,53 +210,52 @@ class _MovieDashboardState extends State<MovieDashboard> {
         ),
         const Divider(height: 1),
         Expanded(child: SingleChildScrollView(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
+          scrollDirection: Axis.horizontal,
+          child: SizedBox(
+            width: tableWidth,
             child: Column(children: [
               Row(children: [
-                Container(
-                  width: letterWidth, height: 48, alignment: Alignment.center,
-                  decoration: const BoxDecoration(color: Color(0xFF25263A),
-                    border: Border.fromBorderSide(BorderSide(color: Color(0xFF34364B)))),
-                  child: const Text('LETTER', style: TextStyle(
-                    fontWeight: FontWeight.w900, color: Color(0xFFE5E2FF))),
-                ),
-                Container(
-                  width: detailsWidth, height: 48, alignment: Alignment.center,
-                  decoration: const BoxDecoration(color: Color(0xFF25263A),
-                    border: Border.fromBorderSide(BorderSide(color: Color(0xFF34364B)))),
-                  child: const Text('MOVIE DETAILS',
-                    style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFFE5E2FF))),
-                ),
+                headerCell('LETTER', letterWidth),
+                headerCell('MOVIE NAME  •  YEAR  •  POSTER', detailsWidth),
               ]),
-              for (final letter in letters)
-                Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  Container(
-                    width: letterWidth, constraints: const BoxConstraints(minHeight: 112),
-                    alignment: Alignment.topCenter,
-                    padding: const EdgeInsets.only(top: 18),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF25263A),
-                      border: Border.all(color: const Color(0xFF34364B)),
-                    ),
-                    child: Text(letter, style: const TextStyle(
-                      fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFFC6BEFF))),
-                  ),
-                  Container(
-                    width: detailsWidth,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF171925),
-                      border: Border.all(color: const Color(0xFF34364B)),
-                    ),
-                    child: grouped[letter]!.isEmpty
-                      ? const SizedBox(height: 104)
-                      : Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [for (final movie in grouped[letter]!) movieEntry(movie)],
+              Expanded(child: ListView.builder(
+                itemCount: letters.length,
+                itemBuilder: (context, index) {
+                  final letter = letters[index];
+                  final list = grouped[letter]!;
+                  final rowHeight = list.isEmpty ? 82.0 : list.length * 134.0 + 4.0;
+                  return SizedBox(
+                    height: rowHeight,
+                    child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      Container(
+                        width: letterWidth,
+                        alignment: Alignment.topCenter,
+                        padding: const EdgeInsets.only(top: 18),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF25263A),
+                          border: Border.all(color: const Color(0xFF34364B)),
                         ),
-                  ),
-                ]),
+                        child: Text(letter, style: const TextStyle(
+                          fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFFC6BEFF))),
+                      ),
+                      Container(
+                        width: detailsWidth,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF171925),
+                          border: Border.all(color: const Color(0xFF34364B)),
+                        ),
+                        child: list.isEmpty
+                          ? const Center(child: Text('',
+                              style: TextStyle(color: Color(0xFF686B82))))
+                          : Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [for (final movie in list) movieEntry(movie)],
+                            ),
+                      ),
+                    ]),
+                  );
+                },
+              )),
             ]),
           ),
         )),
