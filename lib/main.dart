@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:pasteboard/pasteboard.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() => runApp(const MovieApp());
@@ -436,6 +437,31 @@ class _MovieEntryDialogState extends State<MovieEntryDialog> {
     setState(() { _poster = result.files.single.path; _error = null; });
   }
 
+  Future<void> _pastePosterFromClipboard() async {
+    setState(() { _saving = true; _error = null; });
+    try {
+      final bytes = await Pasteboard.image;
+      if (bytes == null || bytes.isEmpty) {
+        if (mounted) setState(() {
+          _saving = false;
+          _error = 'No image found in clipboard. Copy an image first, then paste it here.';
+        });
+        return;
+      }
+      final temp = await getTemporaryDirectory();
+      final file = File(temp.path + Platform.pathSeparator +
+        'poster_from_clipboard_${DateTime.now().microsecondsSinceEpoch}.png');
+      await file.writeAsBytes(bytes, flush: true);
+      if (!mounted) return;
+      setState(() { _poster = file.path; _saving = false; _error = null; });
+    } catch (_) {
+      if (mounted) setState(() {
+        _saving = false;
+        _error = 'Could not paste the clipboard image. Try copying the image again.';
+      });
+    }
+  }
+
   Future<void> _usePosterUrl() async {
     final source = _posterUrl.text.trim();
     final uri = Uri.tryParse(source);
@@ -521,8 +547,21 @@ class _MovieEntryDialogState extends State<MovieEntryDialog> {
             return null;
           }),
         const SizedBox(height: 16),
-        OutlinedButton.icon(onPressed: _saving ? null : _pickPoster, icon: const Icon(Icons.image_outlined),
-          label: Text(_poster == null ? 'Choose movie poster' : 'Change poster')),
+        Row(children: [
+          Expanded(child: OutlinedButton.icon(
+            onPressed: _saving ? null : _pickPoster,
+            icon: const Icon(Icons.image_outlined),
+            label: Text(_poster == null ? 'Choose image file' : 'Change poster'),
+          )),
+          const SizedBox(width: 10),
+          Expanded(child: OutlinedButton.icon(
+            onPressed: _saving ? null : _pastePosterFromClipboard,
+            icon: const Icon(Icons.content_paste_rounded),
+            label: const Text('Paste copied image'),
+          )),
+        ]),
+        const SizedBox(height: 8),
+        const Text('You can paste a copied image from any app, or choose an image file.'),
         const SizedBox(height: 12),
         TextFormField(
           controller: _posterUrl,
